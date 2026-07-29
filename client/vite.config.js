@@ -5,7 +5,7 @@ import tailwindcss from '@tailwindcss/vite';
 // https://vitejs.dev/config/
 export default defineConfig({
   plugins: [react(), tailwindcss()],
-  base: './', // Required for GitHub Pages deployment
+  base: '/Seating_Arrangement/', // Exact repository base path for GitHub Pages
   server: {
     port: 5173,
     proxy: {
