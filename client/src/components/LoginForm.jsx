@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { LogIn, Lock, User, AlertCircle, Sparkles, KeyRound } from 'lucide-react';
+import { LogIn, Lock, User, AlertCircle, KeyRound } from 'lucide-react';
 import { login } from '../utils/storage';
 
 export default function LoginForm({ onLoginSuccess }) {
@@ -71,7 +71,7 @@ export default function LoginForm({ onLoginSuccess }) {
                   required
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
-                  placeholder="e.g. Nowrin Fathima"
+                  placeholder="Enter your username"
                   className="block w-full pl-9 pr-3.5 py-2.5 sm:py-3 bg-slate-900/90 border border-slate-700/80 rounded-xl text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-amber-500/50 text-xs sm:text-sm"
                 />
               </div>
@@ -111,28 +111,6 @@ export default function LoginForm({ onLoginSuccess }) {
               )}
             </button>
           </form>
-
-          {/* Quick Credentials Info */}
-          <div className="mt-6 pt-5 border-t border-slate-800 text-[11px]">
-            <div className="flex items-center space-x-1.5 text-amber-400 font-semibold mb-2">
-              <Sparkles className="w-3.5 h-3.5" />
-              <span>Sample Mobile Logins</span>
-            </div>
-            <div className="grid grid-cols-1 gap-1.5 text-slate-400 bg-slate-900/60 p-2.5 rounded-xl border border-slate-800/80 font-mono text-[10px] sm:text-xs">
-              <div>
-                <span className="text-pink-300 font-sans font-medium">Nowrin:</span>{' '}
-                <code className="text-pink-300 bg-slate-800 px-1 py-0.5 rounded">Nowrin Fathima</code> / <code className="text-slate-300 bg-slate-800 px-1 py-0.5 rounded">45_nowrin</code>
-              </div>
-              <div>
-                <span className="text-pink-300 font-sans font-medium">Aleena:</span>{' '}
-                <code className="text-pink-300 bg-slate-800 px-1 py-0.5 rounded">Aleena Denny</code> / <code className="text-slate-300 bg-slate-800 px-1 py-0.5 rounded">7_aleena</code>
-              </div>
-              <div>
-                <span className="text-slate-300 font-sans font-medium">Admin:</span>{' '}
-                <code className="text-amber-300 bg-slate-800 px-1 py-0.5 rounded">admin</code> / <code className="text-amber-300 bg-slate-800 px-1 py-0.5 rounded">admin123</code>
-              </div>
-            </div>
-          </div>
         </div>
       </div>
     </div>
