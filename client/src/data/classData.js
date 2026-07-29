@@ -1,9 +1,8 @@
 import bcrypt from 'bcryptjs';
 
 /**
- * CLASSROOM SEATING & STUDENT DATA
- * 
- * 13 Real Girls Accounts + 42 Boys Accounts
+ * REAL CLASSROOM SEATING & STUDENT DATA
+ * 13 Girls Accounts + 42 Boys Accounts
  */
 
 export const INITIAL_CONFIG = {
@@ -60,52 +59,50 @@ const GIRLS_DATA = [
   { full_name: 'Saniya Mary J', roll_number: '52', username: 'Saniya Mary J', pass: '52_saniya', bench_id: 6 }
 ];
 
-const defaultBoyPasswordHash = bcrypt.hashSync('student123', 10);
-
-// 42 BOYS ACCOUNTS
+// 42 REAL BOYS ACCOUNTS & PASSWORDS
 const BOYS_DATA = [
-  { full_name: 'Liam Smith', roll_number: 'M101', bench_id: 7 },
-  { full_name: 'Noah Johnson', roll_number: 'M102', bench_id: 7 },
-  { full_name: 'Ethan Brown', roll_number: 'M103', bench_id: 7 },
-  { full_name: 'Lucas Jones', roll_number: 'M104', bench_id: 8 },
-  { full_name: 'Mason Garcia', roll_number: 'M105', bench_id: 8 },
-  { full_name: 'Oliver Miller', roll_number: 'M106', bench_id: 8 },
-  { full_name: 'Elijah Davis', roll_number: 'M107', bench_id: 9 },
-  { full_name: 'Logan Rodriguez', roll_number: 'M108', bench_id: 9 },
-  { full_name: 'James Martinez', roll_number: 'M109', bench_id: 9 },
-  { full_name: 'Alexander Hernandez', roll_number: 'M110', bench_id: 10 },
-  { full_name: 'Benjamin Lopez', roll_number: 'M111', bench_id: 10 },
-  { full_name: 'Henry Gonzalez', roll_number: 'M112', bench_id: 10 },
-  { full_name: 'Sebastian Wilson', roll_number: 'M113', bench_id: 11 },
-  { full_name: 'Jack Anderson', roll_number: 'M114', bench_id: 11 },
-  { full_name: 'Owen Thomas', roll_number: 'M115', bench_id: 11 },
-  { full_name: 'Daniel Taylor', roll_number: 'M116', bench_id: 12 },
-  { full_name: 'Matthew Moore', roll_number: 'M117', bench_id: 12 },
-  { full_name: 'Samuel Jackson', roll_number: 'M118', bench_id: 12 },
-  { full_name: 'David Martin', roll_number: 'M119', bench_id: 13 },
-  { full_name: 'Joseph Lee', roll_number: 'M120', bench_id: 13 },
-  { full_name: 'Carter Perez', roll_number: 'M121', bench_id: 13 },
-  { full_name: 'Wyatt Thompson', roll_number: 'M122', bench_id: 14 },
-  { full_name: 'Jayden White', roll_number: 'M123', bench_id: 14 },
-  { full_name: 'Gabriel Harris', roll_number: 'M124', bench_id: 14 },
-  { full_name: 'Julian Sanchez', roll_number: 'M125', bench_id: 15 },
-  { full_name: 'Luke Clark', roll_number: 'M126', bench_id: 15 },
-  { full_name: 'Anthony Ramirez', roll_number: 'M127', bench_id: 15 },
-  { full_name: 'Isaac Lewis', roll_number: 'M128', bench_id: 16 },
-  { full_name: 'Dylan Robinson', roll_number: 'M129', bench_id: 16 },
-  { full_name: 'Leo Walker', roll_number: 'M130', bench_id: 16 },
-  { full_name: 'Henry Young', roll_number: 'M131', bench_id: 17 },
-  { full_name: 'Hudson Allen', roll_number: 'M132', bench_id: 17 },
-  { full_name: 'Charles King', roll_number: 'M133', bench_id: 17 },
-  { full_name: 'Thomas Wright', roll_number: 'M134', bench_id: 18 },
-  { full_name: 'Caleb Scott', roll_number: 'M135', bench_id: 18 },
-  { full_name: 'Ryan Torres', roll_number: 'M136', bench_id: 18 },
-  { full_name: 'Adrian Nguyen', roll_number: 'M137', bench_id: 19 },
-  { full_name: 'Eli Hill', roll_number: 'M138', bench_id: 19 },
-  { full_name: 'Nolan Flores', roll_number: 'M139', bench_id: 20 },
-  { full_name: 'Aaron Green', roll_number: 'M140', bench_id: 20 },
-  { full_name: 'Ezra Adams', roll_number: 'M141', bench_id: 21 },
-  { full_name: 'Maverick Baker', roll_number: 'M142', bench_id: 21 }
+  { full_name: 'AANS THOMAS', roll_number: '1', username: 'AANS THOMAS', pass: '1_aans', bench_id: 7 },
+  { full_name: 'ABHISHEK A', roll_number: '2', username: 'ABHISHEK A', pass: '2_abhishek', bench_id: 7 },
+  { full_name: 'ADARSH R', roll_number: '3', username: 'ADARSH R', pass: '3_adarsh', bench_id: 7 },
+  { full_name: 'ADHITHYAN ANILKUMAR', roll_number: '4', username: 'ADHITHYAN ANILKUMAR', pass: '4_adhithyan', bench_id: 8 },
+  { full_name: 'ADWAITH RATHEESH', roll_number: '5', username: 'ADWAITH RATHEESH', pass: '5_adwaith', bench_id: 8 },
+  { full_name: 'ALAN TOM JAMES', roll_number: '6', username: 'ALAN TOM JAMES', pass: '6_alan', bench_id: 8 },
+  { full_name: 'ALEN MATHEW', roll_number: '8', username: 'ALEN MATHEW', pass: '8_alen', bench_id: 9 },
+  { full_name: 'ALOSHY ANTONY', roll_number: '10', username: 'ALOSHY ANTONY', pass: '10_aloshy', bench_id: 9 },
+  { full_name: 'AMAL BINOY', roll_number: '11', username: 'AMAL BINOY', pass: '11_amal', bench_id: 9 },
+  { full_name: 'AMAL JEES GEORGE', roll_number: '12', username: 'AMAL JEES GEORGE', pass: '12_amal', bench_id: 10 },
+  { full_name: 'ANTO BOBAN', roll_number: '14', username: 'ANTO BOBAN', pass: '14_anto', bench_id: 10 },
+  { full_name: 'ANWIN RAJU GEORGE', roll_number: '15', username: 'ANWIN RAJU GEORGE', pass: '15_anwin', bench_id: 10 },
+  { full_name: 'ARAVINDH ANOJ', roll_number: '16', username: 'ARAVINDH ANOJ', pass: '16_aravindh', bench_id: 11 },
+  { full_name: 'ARUN P GEORGEKUTTY', roll_number: '18', username: 'ARUN P GEORGEKUTTY', pass: '18_arun', bench_id: 11 },
+  { full_name: 'BEN ABY GEORGE', roll_number: '19', username: 'BEN ABY GEORGE', pass: '19_ben', bench_id: 11 },
+  { full_name: 'BEN SIJO', roll_number: '20', username: 'BEN SIJO', pass: '20_ben', bench_id: 12 },
+  { full_name: 'BINTO BENNY', roll_number: '21', username: 'BINTO BENNY', pass: '21_binto', bench_id: 12 },
+  { full_name: 'BREJITH R MATHEW', roll_number: '22', username: 'BREJITH R MATHEW', pass: '22_brejith', bench_id: 12 },
+  { full_name: 'DEYON MATHEW', roll_number: '23', username: 'DEYON MATHEW', pass: '23_deyon', bench_id: 13 },
+  { full_name: 'FEBIN JOSE PHILIP', roll_number: '25', username: 'FEBIN JOSE PHILIP', pass: '25_febin', bench_id: 13 },
+  { full_name: 'GEO GIJI', roll_number: '28', username: 'GEO GIJI', pass: '28_geo', bench_id: 13 },
+  { full_name: 'HARIKRISHNA A J', roll_number: '30', username: 'HARIKRISHNA A J', pass: '30_harikrishna', bench_id: 14 },
+  { full_name: 'HARIKRISHNAN M', roll_number: '31', username: 'HARIKRISHNAN M', pass: '31_harikrishnan', bench_id: 14 },
+  { full_name: 'JACKSON THOMAS', roll_number: '32', username: 'JACKSON THOMAS', pass: '32_jackson', bench_id: 14 },
+  { full_name: 'JAKE JOHN', roll_number: '33', username: 'JAKE JOHN', pass: '33_jake', bench_id: 15 },
+  { full_name: 'JISSON JAISON', roll_number: '34', username: 'JISSON JAISON', pass: '34_jisson', bench_id: 15 },
+  { full_name: 'JOEL TOM VARGHESE', roll_number: '35', username: 'JOEL TOM VARGHESE', pass: '35_joel', bench_id: 15 },
+  { full_name: 'JOSHUA JOMON', roll_number: '36', username: 'JOSHUA JOMON', pass: '36_joshua', bench_id: 16 },
+  { full_name: 'JOYAL REJI', roll_number: '37', username: 'JOYAL REJI', pass: '37_joyal', bench_id: 16 },
+  { full_name: 'LEO LENY JOHN', roll_number: '38', username: 'LEO LENY JOHN', pass: '38_leo', bench_id: 16 },
+  { full_name: 'MIDHUN JOSE', roll_number: '40', username: 'MIDHUN JOSE', pass: '40_midhun', bench_id: 17 },
+  { full_name: 'MIDHUN MATHEW', roll_number: '41', username: 'MIDHUN MATHEW', pass: '41_midhun', bench_id: 17 },
+  { full_name: 'MILAN ABHILASH', roll_number: '42', username: 'MILAN ABHILASH', pass: '42_milan', bench_id: 17 },
+  { full_name: 'NIDHIN S M', roll_number: '43', username: 'NIDHIN S M', pass: '43_nidhin', bench_id: 18 },
+  { full_name: 'NIMAL SEBASTIAN JOSEPH', roll_number: '44', username: 'NIMAL SEBASTIAN JOSEPH', pass: '44_nimal', bench_id: 18 },
+  { full_name: 'NOYAL JOSE BIJOY', roll_number: '46', username: 'NOYAL JOSE BIJOY', pass: '46_noyal', bench_id: 18 },
+  { full_name: 'P VAISHNAV', roll_number: '47', username: 'P VAISHNAV', pass: '47_vaishnav', bench_id: 19 },
+  { full_name: 'RON N PRADEESH', roll_number: '49', username: 'RON N PRADEESH', pass: '49_ron', bench_id: 19 },
+  { full_name: 'SABARINATH S', roll_number: '51', username: 'SABARINATH S', pass: '51_sabarinath', bench_id: 20 },
+  { full_name: 'SHONE ABRAHAM', roll_number: '53', username: 'SHONE ABRAHAM', pass: '53_shone', bench_id: 20 },
+  { full_name: 'TONY THOMAS', roll_number: '54', username: 'TONY THOMAS', pass: '54_tony', bench_id: 21 },
+  { full_name: 'VINEK VINOD', roll_number: '55', username: 'VINEK VINOD', pass: '55_vinek', bench_id: 21 }
 ];
 
 export const INITIAL_STUDENTS = [
@@ -120,8 +117,8 @@ export const INITIAL_STUDENTS = [
   })),
   ...BOYS_DATA.map((b, idx) => ({
     id: idx + 14,
-    username: `m_student${idx + 1}`,
-    passwordHash: defaultBoyPasswordHash,
+    username: b.username,
+    passwordHash: bcrypt.hashSync(b.pass, 10),
     full_name: b.full_name,
     roll_number: b.roll_number,
     gender: 'male',
