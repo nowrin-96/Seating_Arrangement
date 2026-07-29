@@ -8,14 +8,53 @@ const STUDENTS_KEY = 'bench_rotation_students';
 const SESSION_KEY = 'bench_rotation_session';
 const VERSION_KEY = 'bench_rotation_data_version';
 
-// DATA VERSION TRACKER - Version 3 includes all 55 real student accounts & passwords
-const CURRENT_DATA_VERSION = 'v3_real_55_students';
+// DATA VERSION TRACKER - Version 4 enables weekly dynamic classmate shuffling
+const CURRENT_DATA_VERSION = 'v4_dynamic_classmate_shuffle';
+
+// Seeded PRNG for deterministic weekly classmate shuffling
+function mulberry32(a) {
+  return function() {
+    let t = a += 0x6D2B79F5;
+    t = Math.imul(t ^ t >>> 15, t | 1);
+    t ^= t + Math.imul(t ^ t >>> 7, t | 61);
+    return ((t ^ t >>> 14) >>> 0) / 4294967296;
+  };
+}
+
+function stringToSeed(str) {
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    hash = (Math.imul(31, hash) + str.charCodeAt(i)) | 0;
+  }
+  return hash >>> 0;
+}
+
+/**
+ * Deterministically shuffles student array based on week index and gender
+ * ensuring students get paired with different classmates every week.
+ */
+function getWeeklyShuffledStudents(students, gender, weekIndex) {
+  if (weekIndex === 0) {
+    return [...students]; // Base week 0 seating matching initial bench assignments
+  }
+
+  const list = [...students];
+  const seed = stringToSeed(`shuffle_${gender}_week_${weekIndex}`);
+  const rng = mulberry32(seed);
+
+  // Fisher-Yates shuffle using deterministic PRNG
+  for (let i = list.length - 1; i > 0; i--) {
+    const j = Math.floor(rng() * (i + 1));
+    [list[i], list[j]] = [list[j], list[i]];
+  }
+
+  return list;
+}
 
 // Initialize LocalStorage with default data if empty OR if data version updated
 export function initStorage() {
   const existingVersion = localStorage.getItem(VERSION_KEY);
 
-  // If old version or missing, force sync to latest real 55 student accounts
   if (existingVersion !== CURRENT_DATA_VERSION) {
     localStorage.setItem(CONFIG_KEY, JSON.stringify(INITIAL_CONFIG));
     localStorage.setItem(ADMIN_KEY, JSON.stringify(INITIAL_ADMIN));
@@ -39,7 +78,6 @@ export function initStorage() {
   }
 }
 
-// Ensure init on module load
 initStorage();
 
 export function getConfig() {
@@ -86,7 +124,6 @@ export function login(username, password) {
   const trimmed = username.trim();
   const admin = getAdmin();
 
-  // 1. Check Admin
   if (admin && admin.username === trimmed) {
     const isMatch = bcrypt.compareSync(password, admin.passwordHash);
     if (isMatch) {
@@ -96,7 +133,6 @@ export function login(username, password) {
     }
   }
 
-  // 2. Check Student (Case-insensitive username matching for student convenience)
   const students = getStudents();
   const student = students.find(s => s.username.toLowerCase() === trimmed.toLowerCase());
   if (student) {
@@ -115,7 +151,6 @@ export function login(username, password) {
     }
   }
 
-  // 3. Generic error
   return { success: false, error: 'Incorrect username or password' };
 }
 
@@ -129,7 +164,7 @@ export function logout() {
 }
 
 // ----------------------------------------------------
-// ROTATION CALCULATIONS
+// ROTATION & CLASSMATE SHUFFLE CALCULATIONS
 // ----------------------------------------------------
 
 export function getWeekIndex(startDateStr, targetDateStr) {
@@ -143,39 +178,50 @@ export function getWeekIndex(startDateStr, targetDateStr) {
   return Math.floor(diffDays / 7);
 }
 
-function getSeatingForGenderList(genderBenches, studentsInGender, weekIndex) {
+function getSeatingForGenderList(genderBenches, studentsInGender, weekIndex, gender) {
   const n = genderBenches.length;
   if (n === 0) return [];
 
-  const offset = ((weekIndex % n) + n) % n;
+  // Sort benches by physical position
+  const sortedBenches = [...genderBenches].sort((a, b) => a.position - b.position);
 
-  const studentsByOrigBenchId = {};
-  genderBenches.forEach(b => { studentsByOrigBenchId[b.id] = []; });
-  
-  studentsInGender.forEach(student => {
-    if (studentsByOrigBenchId[student.bench_id]) {
-      studentsByOrigBenchId[student.bench_id].push({
-        id: student.id,
-        username: student.username,
-        full_name: student.full_name,
-        roll_number: student.roll_number,
-        gender: student.gender,
-        orig_bench_id: student.bench_id
-      });
-    }
-  });
+  let orderedStudents = [];
+  if (weekIndex === 0) {
+    // Week 0: Fill benches based on initial bench_id assignment
+    const studentsByBench = {};
+    sortedBenches.forEach(b => { studentsByBench[b.id] = []; });
+    studentsInGender.forEach(s => {
+      if (studentsByBench[s.bench_id]) {
+        studentsByBench[s.bench_id].push(s);
+      }
+    });
 
-  return genderBenches.map((physicalBench, p) => {
-    const origPos = ((p - offset) % n + n) % n;
-    const origBench = genderBenches[origPos];
-    const occupantStudents = origBench ? (studentsByOrigBenchId[origBench.id] || []) : [];
+    return sortedBenches.map(bench => ({
+      physical_bench: bench,
+      students: studentsByBench[bench.id] || []
+    }));
+  } else {
+    // Week > 0: Shuffled order guaranteeing different classmates each week
+    orderedStudents = getWeeklyShuffledStudents(studentsInGender, gender, weekIndex);
 
-    return {
-      physical_bench: physicalBench,
-      orig_bench: origBench,
-      students: occupantStudents
-    };
-  });
+    let studentPointer = 0;
+    return sortedBenches.map(bench => {
+      const benchStudents = orderedStudents.slice(studentPointer, studentPointer + bench.capacity);
+      studentPointer += bench.capacity;
+
+      return {
+        physical_bench: bench,
+        students: benchStudents.map(s => ({
+          id: s.id,
+          username: s.username,
+          full_name: s.full_name,
+          roll_number: s.roll_number,
+          gender: s.gender,
+          orig_bench_id: s.bench_id
+        }))
+      };
+    });
+  }
 }
 
 export function getSeatingChart(targetDateStr) {
@@ -185,14 +231,14 @@ export function getSeatingChart(targetDateStr) {
 
   const weekIndex = getWeekIndex(config.rotation_start_date, targetDateStr);
 
-  const femaleBenches = benches.filter(b => b.gender === 'female').sort((a, b) => a.position - b.position);
+  const femaleBenches = benches.filter(b => b.gender === 'female');
   const femaleStudents = students.filter(s => s.gender === 'female');
 
-  const maleBenches = benches.filter(b => b.gender === 'male').sort((a, b) => a.position - b.position);
+  const maleBenches = benches.filter(b => b.gender === 'male');
   const maleStudents = students.filter(s => s.gender === 'male');
 
-  const femaleSeating = getSeatingForGenderList(femaleBenches, femaleStudents, weekIndex);
-  const maleSeating = getSeatingForGenderList(maleBenches, maleStudents, weekIndex);
+  const femaleSeating = getSeatingForGenderList(femaleBenches, femaleStudents, weekIndex, 'female');
+  const maleSeating = getSeatingForGenderList(maleBenches, maleStudents, weekIndex, 'male');
 
   return {
     rotation_start_date: config.rotation_start_date,
@@ -204,27 +250,24 @@ export function getSeatingChart(targetDateStr) {
 }
 
 export function getStudentCurrentBench(userId, targetDateStr) {
-  const config = getConfig();
-  const benches = getBenches();
+  const chart = getSeatingChart(targetDateStr);
   const students = getStudents();
-
   const student = students.find(s => s.id === userId);
   if (!student) return null;
 
-  const weekIndex = getWeekIndex(config.rotation_start_date, targetDateStr);
+  const seatingList = student.gender === 'female' ? chart.female_seating : chart.male_seating;
 
-  const genderBenches = benches.filter(b => b.gender === student.gender).sort((a, b) => a.position - b.position);
-  const n = genderBenches.length;
-  if (n === 0) return null;
+  // Find physical bench containing this student
+  let currentBenchMatch = null;
+  for (const entry of seatingList) {
+    const found = entry.students.find(s => s.id === userId);
+    if (found) {
+      currentBenchMatch = entry;
+      break;
+    }
+  }
 
-  const origBenchIndex = genderBenches.findIndex(b => b.id === student.bench_id);
-  if (origBenchIndex === -1) return null;
-
-  const offset = ((weekIndex % n) + n) % n;
-  const currentPos = (origBenchIndex + offset) % n;
-  const currentPhysicalBench = genderBenches[currentPos];
-
-  const benchmates = students.filter(s => s.gender === student.gender && s.bench_id === student.bench_id);
+  if (!currentBenchMatch) return null;
 
   return {
     student: {
@@ -234,16 +277,16 @@ export function getStudentCurrentBench(userId, targetDateStr) {
       gender: student.gender
     },
     target_date: targetDateStr,
-    rotation_start_date: config.rotation_start_date,
-    week_index: weekIndex,
+    rotation_start_date: chart.rotation_start_date,
+    week_index: chart.week_index,
     bench_info: {
-      physical_bench: currentPhysicalBench,
-      week_index: weekIndex,
-      students: benchmates.map(s => ({
+      physical_bench: currentBenchMatch.physical_bench,
+      week_index: chart.week_index,
+      students: currentBenchMatch.students.map(s => ({
         id: s.id,
         full_name: s.full_name,
         roll_number: s.roll_number,
-        is_current_user: s.id === student.id
+        is_current_user: s.id === userId
       }))
     }
   };

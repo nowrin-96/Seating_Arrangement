@@ -1,12 +1,28 @@
 /**
- * Utility functions for weekly bench rotation logic.
+ * Weekly Bench Rotation & Dynamic Classmate Shuffling Logic
  */
+
+function mulberry32(a) {
+  return function() {
+    let t = a += 0x6D2B79F5;
+    t = Math.imul(t ^ t >>> 15, t | 1);
+    t ^= t + Math.imul(t ^ t >>> 7, t | 61);
+    return ((t ^ t >>> 14) >>> 0) / 4294967296;
+  };
+}
+
+function stringToSeed(str) {
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    hash = (Math.imul(31, hash) + str.charCodeAt(i)) | 0;
+  }
+  return hash >>> 0;
+}
 
 function getWeekIndex(startDateStr, targetDateStr) {
   const start = new Date(startDateStr);
   const target = new Date(targetDateStr);
   
-  // Midnight UTC calculation for clean date diff without timezone skew
   const startUtc = Date.UTC(start.getUTCFullYear(), start.getUTCMonth(), start.getUTCDate());
   const targetUtc = Date.UTC(target.getUTCFullYear(), target.getUTCMonth(), target.getUTCDate());
   
@@ -14,72 +30,83 @@ function getWeekIndex(startDateStr, targetDateStr) {
   return Math.floor(diffDays / 7);
 }
 
-/**
- * Given all benches of a specific gender sorted by position, and weekIndex,
- * returns a mapping or updated list of physical benches with their current student groups.
- */
-function getSeatingForGender(genderBenches, studentsInGender, weekIndex) {
+function getWeeklyShuffledStudents(students, gender, weekIndex) {
+  if (weekIndex === 0) {
+    return [...students];
+  }
+
+  const list = [...students];
+  const seed = stringToSeed(`shuffle_${gender}_week_${weekIndex}`);
+  const rng = mulberry32(seed);
+
+  for (let i = list.length - 1; i > 0; i--) {
+    const j = Math.floor(rng() * (i + 1));
+    [list[i], list[j]] = [list[j], list[i]];
+  }
+
+  return list;
+}
+
+function getSeatingForGender(genderBenches, studentsInGender, weekIndex, gender) {
   const n = genderBenches.length;
   if (n === 0) return [];
 
-  const offset = ((weekIndex % n) + n) % n;
+  const sortedBenches = [...genderBenches].sort((a, b) => a.position - b.position);
 
-  // Create map of bench.id -> students who started at that bench (original week-zero group)
-  const studentsByOrigBenchId = {};
-  genderBenches.forEach(b => {
-    studentsByOrigBenchId[b.id] = [];
-  });
-  
-  studentsInGender.forEach(student => {
-    if (studentsByOrigBenchId[student.bench_id]) {
-      studentsByOrigBenchId[student.bench_id].push({
-        id: student.id,
-        username: student.username,
-        full_name: student.full_name,
-        roll_number: student.roll_number,
-        gender: student.gender,
-        orig_bench_id: student.bench_id
-      });
-    }
-  });
+  if (weekIndex === 0) {
+    const studentsByBench = {};
+    sortedBenches.forEach(b => { studentsByBench[b.id] = []; });
+    studentsInGender.forEach(s => {
+      if (studentsByBench[s.bench_id]) {
+        studentsByBench[s.bench_id].push(s);
+      }
+    });
 
-  // Physical position p gets student group from original position p_orig = (p - offset + n) % n
-  return genderBenches.map((physicalBench, p) => {
-    const origPos = ((p - offset) % n + n) % n;
-    const origBench = genderBenches[origPos];
-    const occupantStudents = origBench ? (studentsByOrigBenchId[origBench.id] || []) : [];
+    return sortedBenches.map(bench => ({
+      physical_bench: bench,
+      students: studentsByBench[bench.id] || []
+    }));
+  } else {
+    const orderedStudents = getWeeklyShuffledStudents(studentsInGender, gender, weekIndex);
 
-    return {
-      physical_bench: physicalBench, // id, name, gender, capacity, position
-      orig_bench: origBench,
-      students: occupantStudents
-    };
-  });
+    let studentPointer = 0;
+    return sortedBenches.map(bench => {
+      const benchStudents = orderedStudents.slice(studentPointer, studentPointer + bench.capacity);
+      studentPointer += bench.capacity;
+
+      return {
+        physical_bench: bench,
+        students: benchStudents.map(s => ({
+          id: s.id,
+          username: s.username,
+          full_name: s.full_name,
+          roll_number: s.roll_number,
+          gender: s.gender,
+          orig_bench_id: s.bench_id
+        }))
+      };
+    });
+  }
 }
 
-/**
- * For a specific student, compute which physical bench they sit at this week,
- * and who their benchmates are.
- */
 function getStudentCurrentBench(student, allGenderBenches, allGenderStudents, weekIndex) {
-  const n = allGenderBenches.length;
-  if (n === 0) return null;
+  const seating = getSeatingForGender(allGenderBenches, allGenderStudents, weekIndex, student.gender);
+  
+  let currentMatch = null;
+  for (const entry of seating) {
+    const found = entry.students.find(s => s.id === student.id);
+    if (found) {
+      currentMatch = entry;
+      break;
+    }
+  }
 
-  // Find original bench position
-  const origBenchIndex = allGenderBenches.findIndex(b => b.id === student.bench_id);
-  if (origBenchIndex === -1) return null;
-
-  const offset = ((weekIndex % n) + n) % n;
-  const currentPos = (origBenchIndex + offset) % n;
-  const currentPhysicalBench = allGenderBenches[currentPos];
-
-  // Benchmates are students who share the exact same original bench_id
-  const benchmates = allGenderStudents.filter(s => s.bench_id === student.bench_id);
+  if (!currentMatch) return null;
 
   return {
-    physical_bench: currentPhysicalBench,
+    physical_bench: currentMatch.physical_bench,
     week_index: weekIndex,
-    students: benchmates.map(s => ({
+    students: currentMatch.students.map(s => ({
       id: s.id,
       full_name: s.full_name,
       roll_number: s.roll_number,
