@@ -6,9 +6,25 @@ const ADMIN_KEY = 'bench_rotation_admin';
 const BENCHES_KEY = 'bench_rotation_benches';
 const STUDENTS_KEY = 'bench_rotation_students';
 const SESSION_KEY = 'bench_rotation_session';
+const VERSION_KEY = 'bench_rotation_data_version';
 
-// Initialize LocalStorage with default data if empty
+// DATA VERSION TRACKER - Version 3 includes all 55 real student accounts & passwords
+const CURRENT_DATA_VERSION = 'v3_real_55_students';
+
+// Initialize LocalStorage with default data if empty OR if data version updated
 export function initStorage() {
+  const existingVersion = localStorage.getItem(VERSION_KEY);
+
+  // If old version or missing, force sync to latest real 55 student accounts
+  if (existingVersion !== CURRENT_DATA_VERSION) {
+    localStorage.setItem(CONFIG_KEY, JSON.stringify(INITIAL_CONFIG));
+    localStorage.setItem(ADMIN_KEY, JSON.stringify(INITIAL_ADMIN));
+    localStorage.setItem(BENCHES_KEY, JSON.stringify(INITIAL_BENCHES));
+    localStorage.setItem(STUDENTS_KEY, JSON.stringify(INITIAL_STUDENTS));
+    localStorage.setItem(VERSION_KEY, CURRENT_DATA_VERSION);
+    return;
+  }
+
   if (!localStorage.getItem(CONFIG_KEY)) {
     localStorage.setItem(CONFIG_KEY, JSON.stringify(INITIAL_CONFIG));
   }
@@ -59,6 +75,7 @@ export function reseedStorage() {
   localStorage.setItem(ADMIN_KEY, JSON.stringify(INITIAL_ADMIN));
   localStorage.setItem(BENCHES_KEY, JSON.stringify(INITIAL_BENCHES));
   localStorage.setItem(STUDENTS_KEY, JSON.stringify(INITIAL_STUDENTS));
+  localStorage.setItem(VERSION_KEY, CURRENT_DATA_VERSION);
 }
 
 // ----------------------------------------------------
@@ -79,9 +96,9 @@ export function login(username, password) {
     }
   }
 
-  // 2. Check Student
+  // 2. Check Student (Case-insensitive username matching for student convenience)
   const students = getStudents();
-  const student = students.find(s => s.username === trimmed);
+  const student = students.find(s => s.username.toLowerCase() === trimmed.toLowerCase());
   if (student) {
     const isMatch = bcrypt.compareSync(password, student.passwordHash);
     if (isMatch) {
