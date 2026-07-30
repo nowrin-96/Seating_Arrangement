@@ -429,13 +429,13 @@ app.post('/api/admin/import', requireAdmin, async (req, res) => {
   }
 });
 
-// Serve frontend build in production
-if (process.env.NODE_ENV === 'production') {
-  app.use(express.static(path.join(__dirname, '../client/dist')));
-  app.use((req, res) => {
-    res.sendFile(path.join(__dirname, '../client/dist/index.html'));
-  });
-}
+// Serve frontend build in production / Render
+const clientDistPath = path.join(__dirname, '../client/dist');
+app.use(express.static(clientDistPath));
+app.get('*', (req, res, next) => {
+  if (req.path.startsWith('/api')) return next();
+  res.sendFile(path.join(clientDistPath, 'index.html'));
+});
 
 if (require.main === module) {
   app.listen(PORT, () => {
