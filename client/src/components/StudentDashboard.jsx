@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ChevronLeft, ChevronRight, User, Users, Armchair, CheckCircle2, ShieldCheck } from 'lucide-react';
+import { ChevronLeft, ChevronRight, User, Users, Armchair, CheckCircle2, ShieldCheck, Calendar, RotateCcw } from 'lucide-react';
 import { getStudentCurrentBench } from '../utils/storage';
 
 export default function StudentDashboard({ user }) {
@@ -11,15 +11,15 @@ export default function StudentDashboard({ user }) {
     setData(seatingInfo);
   }, [user, selectedDate]);
 
-  const handlePrevWeek = () => {
+  const handlePrevDay = () => {
     const d = new Date(selectedDate);
-    d.setDate(d.getDate() - 7);
+    d.setDate(d.getDate() - 1);
     setSelectedDate(d.toISOString().split('T')[0]);
   };
 
-  const handleNextWeek = () => {
+  const handleNextDay = () => {
     const d = new Date(selectedDate);
-    d.setDate(d.getDate() + 7);
+    d.setDate(d.getDate() + 1);
     setSelectedDate(d.toISOString().split('T')[0]);
   };
 
@@ -39,33 +39,34 @@ export default function StudentDashboard({ user }) {
         </p>
       </div>
 
-      {/* Date Switcher Bar */}
+      {/* Date Switcher Bar (Daily & Weekly Navigation) */}
       <div className="chalkboard-panel p-4 rounded-2xl flex items-center justify-between">
         <button
-          onClick={handlePrevWeek}
+          onClick={handlePrevDay}
           className="p-2 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl border border-slate-700 text-xs flex items-center space-x-1"
         >
           <ChevronLeft className="w-4 h-4" />
-          <span className="hidden sm:inline">Prev</span>
+          <span className="hidden sm:inline">Prev Day</span>
         </button>
 
         <div className="text-center">
-          <div className="text-xs font-bold text-slate-200">
-            {data ? (data.week_index === 0 ? 'Week 0 (Starting Bench)' : `Week ${data.week_index > 0 ? `+${data.week_index}` : data.week_index}`) : 'Target Week'}
+          <div className="text-xs font-bold text-amber-300 flex items-center justify-center space-x-1">
+            <Calendar className="w-3.5 h-3.5" />
+            <span>{data ? `${data.day_name} (Week ${data.week_index})` : 'Target Date'}</span>
           </div>
           <input
             type="date"
             value={selectedDate}
             onChange={(e) => setSelectedDate(e.target.value)}
-            className="bg-transparent border-none text-[11px] text-amber-400 font-mono text-center focus:outline-none cursor-pointer"
+            className="bg-transparent border-none text-[11px] text-slate-300 font-mono text-center focus:outline-none cursor-pointer"
           />
         </div>
 
         <button
-          onClick={handleNextWeek}
+          onClick={handleNextDay}
           className="p-2 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl border border-slate-700 text-xs flex items-center space-x-1"
         >
-          <span className="hidden sm:inline">Next</span>
+          <span className="hidden sm:inline">Next Day</span>
           <ChevronRight className="w-4 h-4" />
         </button>
       </div>
@@ -83,7 +84,7 @@ export default function StudentDashboard({ user }) {
                   {data.bench_info.physical_bench.name}
                 </span>
                 <span className={`px-2.5 py-1 rounded-lg text-xs font-bold ${user.gender === 'female' ? 'bg-pink-950 text-pink-300 border border-pink-800/50' : 'bg-blue-950 text-blue-300 border border-blue-800/50'}`}>
-                  {user.gender === 'female' ? "Girls' Bench" : "Boys' Bench"}
+                  {data.bench_info.column ? `Column ${data.bench_info.column}` : (user.gender === 'female' ? "Girls' Bench" : "Boys' Bench")}
                 </span>
               </div>
             </div>
@@ -91,7 +92,7 @@ export default function StudentDashboard({ user }) {
             <div className="text-right">
               <span className="text-[10px] uppercase font-bold text-slate-400 block">Row Position</span>
               <span className="text-lg font-mono font-bold text-slate-200">
-                #{data.bench_info.physical_bench.position + 1}
+                Position #{data.bench_info.physical_bench.position + 1}
               </span>
             </div>
           </div>
@@ -100,7 +101,7 @@ export default function StudentDashboard({ user }) {
           <div className="mt-6 space-y-3">
             <h3 className="text-xs font-bold text-slate-300 uppercase tracking-wider flex items-center space-x-1.5">
               <Users className="w-4 h-4 text-amber-400" />
-              <span>Students Sitting With You This Week</span>
+              <span>Students Sitting With You Today ({data.day_name})</span>
             </h3>
 
             <div className="space-y-2.5">
@@ -130,17 +131,23 @@ export default function StudentDashboard({ user }) {
                   </div>
 
                   <span className="text-xs font-mono font-bold px-2 py-1 bg-slate-950 rounded border border-slate-800 text-slate-300">
-                    {student.roll_number}
+                    Roll #{student.roll_number}
                   </span>
                 </div>
               ))}
             </div>
           </div>
 
-          {/* Security Note */}
-          <div className="mt-6 pt-4 border-t border-slate-800/80 flex items-center space-x-2 text-[11px] text-slate-500">
-            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-            <span>Weekly rotation moves entire bench groups seamlessly each Monday.</span>
+          {/* Dynamic Rotation Info Footer */}
+          <div className="mt-6 pt-4 border-t border-slate-800/80 space-y-1.5 text-[11px] text-slate-400">
+            <div className="flex items-center space-x-1.5 text-emerald-400 font-semibold">
+              <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
+              <span>Daily Seat Rotation: Moves down 1 bench every day.</span>
+            </div>
+            <div className="flex items-center space-x-1.5 text-amber-400 font-semibold">
+              <RotateCcw className="w-3.5 h-3.5 shrink-0" />
+              <span>Weekly Student Shuffle: Partners change every week.</span>
+            </div>
           </div>
 
         </div>
