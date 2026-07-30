@@ -58,7 +58,7 @@ const GIRLS_DATA = [
   { full_name: 'Fina Shaju', roll_number: '26', username: 'Fina Shaju', pass: '26_fina', bench_id: 2 },
   { full_name: 'Freya Parveen Marikar', roll_number: '27', username: 'Freya Parveen Marikar', pass: '27_freya', bench_id: 3 },
   { full_name: 'Hanan Fathima NS', roll_number: '29', username: 'Hanan Fathima NS', pass: '29_hanan', bench_id: 3 },
-  { full_name: 'Liya Regi', roll_number: '39', username: 'Liya Regi', pass: '39_liya', bench_id: 3 },
+  { full_name: 'Liya Reji', roll_number: '39', username: 'Liya Reji', pass: '39_liya', bench_id: 3 },
   { full_name: 'Nowrin Fathima', roll_number: '45', username: 'Nowrin Fathima', pass: '45_nowrin', bench_id: 4 },
   { full_name: 'Princy Elin Mathew', roll_number: '48', username: 'Princy Elin Mathew', pass: '48_princy', bench_id: 4 },
   { full_name: 'Rose Brijit Abey', roll_number: '50', username: 'Rose Brijit Abey', pass: '50_rose', bench_id: 5 },

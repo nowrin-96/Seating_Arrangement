@@ -8,8 +8,8 @@ const STUDENTS_KEY = 'bench_rotation_students';
 const SESSION_KEY = 'bench_rotation_session';
 const VERSION_KEY = 'bench_rotation_data_version';
 
-// DATA VERSION TRACKER - Version 5 enables Column C1-C4 structure with Weekly Classmate Shuffle & Daily Seat Rotation
-const CURRENT_DATA_VERSION = 'v5_c1_c4_daily_rotation_weekly_shuffle';
+// DATA VERSION TRACKER - Version 6 updates Liya Reji spelling across all devices
+const CURRENT_DATA_VERSION = 'v6_liya_reji_spelling_fix';
 
 // Seeded PRNG for deterministic weekly classmate shuffling
 function mulberry32(a) {
