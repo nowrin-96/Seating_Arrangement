@@ -1,13 +1,15 @@
 /**
- * Cross-Column Weekly Coprime Rotation & Daily Bench Shift Engine
+ * Crash-Proof Cross-Column Weekly Coprime Rotation & Daily Bench Shift Engine
  */
 
-const COPRIME_STRIDES = [
-  5, 11, 13, 17, 19, 23, 25, 29, 31, 37, 41, 43, 47, 53, 59, 61, 67, 71, 73, 79,
-  83, 89, 97, 101, 103, 107, 109, 113, 127, 131, 137, 139, 149, 151, 157, 163, 167, 173, 179, 181,
-  191, 193, 197, 199, 211, 223, 227, 229, 233, 239, 241, 251, 257, 263, 269, 271, 277, 281, 283, 293,
-  307, 311, 313, 317, 331, 337, 347, 349, 353, 359, 367, 373, 379, 383, 389, 397, 401, 409, 419, 421
-];
+function gcd(a, b) {
+  while (b !== 0) {
+    const t = b;
+    b = a % b;
+    a = t;
+  }
+  return a;
+}
 
 function getDaysDiff(startDateStr, targetDateStr) {
   const start = new Date(startDateStr);
@@ -25,24 +27,29 @@ function getWeekIndex(startDateStr, targetDateStr) {
 }
 
 function getWeeklyShuffledStudents(students, gender, weekIndex) {
-  if (weekIndex === 0) {
-    return [...students].sort((a, b) => a.roll_number - b.roll_number);
+  const list = [...students].sort((a, b) => (parseInt(a.roll_number) || 0) - (parseInt(b.roll_number) || 0));
+  const m = list.length;
+  if (m <= 1 || weekIndex === 0) return list;
+
+  let k = weekIndex * 7 + (gender === 'female' ? 3 : 5);
+  while (gcd(k, m) !== 1) {
+    k++;
   }
 
-  const list = [...students].sort((a, b) => a.roll_number - b.roll_number);
-  const m = list.length;
-  if (m <= 1) return list;
-
-  const stride = COPRIME_STRIDES[(weekIndex - 1) % COPRIME_STRIDES.length];
-  const shift = (weekIndex * 11) % m;
+  const shift = (weekIndex * (gender === 'female' ? 5 : 11)) % m;
 
   const permuted = new Array(m);
   for (let i = 0; i < m; i++) {
-    const targetIdx = (i * stride + shift) % m;
+    const targetIdx = (i * k + shift) % m;
     permuted[targetIdx] = list[i];
   }
 
-  return permuted;
+  const validResult = permuted.filter(Boolean);
+  if (validResult.length < m) {
+    return list;
+  }
+
+  return validResult;
 }
 
 function getSeatingForGender(genderBenches, studentsInGender, weekIndex, dayIndex = 0, gender = 'male') {
@@ -54,10 +61,12 @@ function getSeatingForGender(genderBenches, studentsInGender, weekIndex, dayInde
   const benchGroups = [];
   let ptr = 0;
   sortedBenches.forEach(bench => {
+    const occupantStudents = weekStudents.slice(ptr, ptr + bench.capacity);
     benchGroups.push({
       orig_bench: bench,
-      column: bench.column || 'C1',
-      students: weekStudents.slice(ptr, ptr + bench.capacity)
+      column: bench.column || (gender === 'female' ? 'C1' : 'C2'),
+      position: bench.position,
+      students: occupantStudents
     });
     ptr += bench.capacity;
   });
@@ -86,7 +95,7 @@ function getSeatingForGender(genderBenches, studentsInGender, weekIndex, dayInde
       seating.push({
         physical_bench: physicalBench,
         column: colName,
-        students: occupantGroup ? occupantGroup.students.map(s => ({
+        students: (occupantGroup && occupantGroup.students) ? occupantGroup.students.map(s => ({
           id: s.id,
           username: s.username,
           full_name: s.full_name,
@@ -106,7 +115,7 @@ function getStudentCurrentBench(student, allGenderBenches, allGenderStudents, we
   
   let currentMatch = null;
   for (const entry of seating) {
-    const found = entry.students.find(s => s.id === student.id);
+    const found = entry.students && entry.students.find(s => s.id === student.id);
     if (found) {
       currentMatch = entry;
       break;
