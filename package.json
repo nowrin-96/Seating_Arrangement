@@ -6,6 +6,7 @@
   "scripts": {
     "start": "node server/index.js",
     "seed": "node server/seed.js",
+    "prebuild": "npm install",
     "build": "vite build client",
     "predeploy": "npm run build",
     "deploy": "gh-pages -d client/dist",
