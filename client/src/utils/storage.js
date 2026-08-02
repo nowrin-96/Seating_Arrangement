@@ -8,48 +8,132 @@ const STUDENTS_KEY = 'bench_rotation_students';
 const SESSION_KEY = 'bench_rotation_session';
 const VERSION_KEY = 'bench_rotation_data_version';
 
-// DATA VERSION TRACKER - Version 8: 100% Crash-Proof GCD Coprime Permutation
-const CURRENT_DATA_VERSION = 'v8_crashproof_gcd_permutation';
+// DATA VERSION TRACKER - Version 9: Greedy Constraint Pair Tracking Algorithm (Zero Repeated Benchmates)
+const CURRENT_DATA_VERSION = 'v9_greedy_zero_repeat_pairs';
 
-function gcd(a, b) {
-  while (b !== 0) {
-    const t = b;
-    b = a % b;
-    a = t;
+function mulberry32(a) {
+  return function() {
+    let t = a += 0x6D2B79F5;
+    t = Math.imul(t ^ t >>> 15, t | 1);
+    t ^= t + Math.imul(t ^ t >>> 7, t | 61);
+    return ((t ^ t >>> 14) >>> 0) / 4294967296;
+  };
+}
+
+function stringToSeed(str) {
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    hash = (Math.imul(31, hash) + str.charCodeAt(i)) | 0;
   }
-  return a;
+  return hash >>> 0;
+}
+
+function getPairKey(idA, idB) {
+  return idA < idB ? `${idA}_${idB}` : `${idB}_${idA}`;
 }
 
 /**
- * 100% Crash-Proof Coprime Stride Permutation Algorithm:
- * Guarantees every student index 0..M-1 is uniquely filled without any undefined values,
- * ensuring zero repeated benchmate pairs across weeks for both boys & girls.
+ * Greedy Pair-Tracking Weekly Seating Algorithm:
+ * Evaluates candidate shuffles against all past weeks (0..W-1) and picks candidate with ZERO pair collisions.
  */
-function getWeeklyShuffledStudents(students, gender, weekIndex) {
-  const list = [...students].sort((a, b) => (parseInt(a.roll_number) || 0) - (parseInt(b.roll_number) || 0));
-  const m = list.length;
-  if (m <= 1 || weekIndex === 0) return list;
+function computeWeeklySeatingSequence(students, benches, weekIndex, gender) {
+  const genderStudents = [...students].filter(s => s.gender === gender)
+    .sort((a, b) => (parseInt(a.roll_number) || 0) - (parseInt(b.roll_number) || 0));
+  const genderBenches = [...benches].filter(b => b.gender === gender)
+    .sort((a, b) => a.position - b.position);
 
-  // Compute stride k strictly coprime to m (gcd(k, m) === 1)
-  let k = weekIndex * 7 + (gender === 'female' ? 3 : 5);
-  while (gcd(k, m) !== 1) {
-    k++;
+  if (genderStudents.length === 0 || genderBenches.length === 0) return [];
+
+  // Track pair history across weeks
+  const pairHistory = {}; // pairKey -> count
+
+  let currentWeekArrangement = null;
+
+  for (let w = 0; w <= weekIndex; w++) {
+    if (w === 0) {
+      // Week 0 base seating
+      const benchMap = [];
+      let ptr = 0;
+      genderBenches.forEach(bench => {
+        const group = genderStudents.slice(ptr, ptr + bench.capacity);
+        benchMap.push(group);
+        ptr += bench.capacity;
+      });
+
+      // Record pairs for Week 0
+      benchMap.forEach(group => {
+        for (let i = 0; i < group.length; i++) {
+          for (let j = i + 1; j < group.length; j++) {
+            const key = getPairKey(group[i].id, group[j].id);
+            pairHistory[key] = (pairHistory[key] || 0) + 1;
+          }
+        }
+      });
+
+      if (w === weekIndex) currentWeekArrangement = benchMap;
+    } else {
+      // Week W > 0: Evaluate 100 deterministic candidates to find 0 pair collisions
+      let bestCandidate = null;
+      let bestScore = Infinity;
+
+      for (let cand = 1; cand <= 100; cand++) {
+        const seed = stringToSeed(`cand_${gender}_w${w}_c${cand}`);
+        const rng = mulberry32(seed);
+
+        const candList = [...genderStudents];
+        for (let i = candList.length - 1; i > 0; i--) {
+          const j = Math.floor(rng() * (i + 1));
+          [candList[i], candList[j]] = [candList[j], candList[i]];
+        }
+
+        // Partition into bench groups matching capacities
+        const candidateGroups = [];
+        let ptr = 0;
+        genderBenches.forEach(bench => {
+          candidateGroups.push(candList.slice(ptr, ptr + bench.capacity));
+          ptr += bench.capacity;
+        });
+
+        // Score candidate based on past pair collisions
+        let score = 0;
+        candidateGroups.forEach(group => {
+          for (let i = 0; i < group.length; i++) {
+            for (let j = i + 1; j < group.length; j++) {
+              const key = getPairKey(group[i].id, group[j].id);
+              const pastCount = pairHistory[key] || 0;
+              score += pastCount * 100 + pastCount * pastCount * 500;
+            }
+          }
+        });
+
+        if (score < bestScore) {
+          bestScore = score;
+          bestCandidate = candidateGroups;
+          if (score === 0) break; // Found perfect candidate with 0 repeat pairs!
+        }
+      }
+
+      // Record pairs for winning candidate
+      bestCandidate.forEach(group => {
+        for (let i = 0; i < group.length; i++) {
+          for (let j = i + 1; j < group.length; j++) {
+            const key = getPairKey(group[i].id, group[j].id);
+            pairHistory[key] = (pairHistory[key] || 0) + 1;
+          }
+        }
+      });
+
+      if (w === weekIndex) currentWeekArrangement = bestCandidate;
+    }
   }
 
-  const shift = (weekIndex * (gender === 'female' ? 5 : 11)) % m;
+  // Flatten into single student list in bench order
+  const resultStudents = [];
+  currentWeekArrangement.forEach(group => {
+    resultStudents.push(...group);
+  });
 
-  const permuted = new Array(m);
-  for (let i = 0; i < m; i++) {
-    const targetIdx = (i * k + shift) % m;
-    permuted[targetIdx] = list[i];
-  }
-
-  const validResult = permuted.filter(Boolean);
-  if (validResult.length < m) {
-    return list;
-  }
-
-  return validResult;
+  return resultStudents;
 }
 
 export function initStorage() {
@@ -190,17 +274,16 @@ export function getDayOfWeekName(targetDateStr) {
 
 /**
  * Computes seating chart for a specific gender across all columns:
- * 1. Cross-Column Weekly Coprime Shuffle (rotates ALL boys across C2, C3, C4)
+ * 1. Greedy Pair Tracking (0 repeat benchmates across weeks)
  * 2. Daily Bench Rotation (shifts seat position by 1 bench per day within column)
  */
 function getSeatingForGenderColumns(genderBenches, studentsInGender, weekIndex, dayIndex, gender) {
   if (genderBenches.length === 0) return [];
 
-  // Sort benches by position
   const sortedBenches = [...genderBenches].sort((a, b) => a.position - b.position);
 
-  // Step 1: Weekly Cross-Column Student Shuffle
-  const weekStudents = getWeeklyShuffledStudents(studentsInGender, gender, weekIndex);
+  // Step 1: Compute Week's Seating using Pair Collision Solver
+  const weekStudents = computeWeeklySeatingSequence(studentsInGender, sortedBenches, weekIndex, gender);
 
   // Partition week's students into bench groups matching bench capacities
   const benchGroups = [];

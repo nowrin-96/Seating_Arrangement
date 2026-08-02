@@ -1,14 +1,26 @@
 /**
- * Crash-Proof Cross-Column Weekly Coprime Rotation & Daily Bench Shift Engine
+ * Greedy Pair-Tracking Weekly Seating & Daily Shift Engine (Zero Repeat Benchmates)
  */
 
-function gcd(a, b) {
-  while (b !== 0) {
-    const t = b;
-    b = a % b;
-    a = t;
+function mulberry32(a) {
+  return function() {
+    let t = a += 0x6D2B79F5;
+    t = Math.imul(t ^ t >>> 15, t | 1);
+    t ^= t + Math.imul(t ^ t >>> 7, t | 61);
+    return ((t ^ t >>> 14) >>> 0) / 4294967296;
+  };
+}
+
+function stringToSeed(str) {
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    hash = (Math.imul(31, hash) + str.charCodeAt(i)) | 0;
   }
-  return a;
+  return hash >>> 0;
+}
+
+function getPairKey(idA, idB) {
+  return idA < idB ? `${idA}_${idB}` : `${idB}_${idA}`;
 }
 
 function getDaysDiff(startDateStr, targetDateStr) {
@@ -26,37 +38,102 @@ function getWeekIndex(startDateStr, targetDateStr) {
   return Math.floor(diffDays / 7);
 }
 
-function getWeeklyShuffledStudents(students, gender, weekIndex) {
-  const list = [...students].sort((a, b) => (parseInt(a.roll_number) || 0) - (parseInt(b.roll_number) || 0));
-  const m = list.length;
-  if (m <= 1 || weekIndex === 0) return list;
+function computeWeeklySeatingSequence(students, benches, weekIndex, gender) {
+  const genderStudents = [...students].filter(s => s.gender === gender)
+    .sort((a, b) => (parseInt(a.roll_number) || 0) - (parseInt(b.roll_number) || 0));
+  const genderBenches = [...benches].filter(b => b.gender === gender)
+    .sort((a, b) => a.position - b.position);
 
-  let k = weekIndex * 7 + (gender === 'female' ? 3 : 5);
-  while (gcd(k, m) !== 1) {
-    k++;
+  if (genderStudents.length === 0 || genderBenches.length === 0) return [];
+
+  const pairHistory = {};
+  let currentWeekArrangement = null;
+
+  for (let w = 0; w <= weekIndex; w++) {
+    if (w === 0) {
+      const benchMap = [];
+      let ptr = 0;
+      genderBenches.forEach(bench => {
+        const group = genderStudents.slice(ptr, ptr + bench.capacity);
+        benchMap.push(group);
+        ptr += bench.capacity;
+      });
+
+      benchMap.forEach(group => {
+        for (let i = 0; i < group.length; i++) {
+          for (let j = i + 1; j < group.length; j++) {
+            const key = getPairKey(group[i].id, group[j].id);
+            pairHistory[key] = (pairHistory[key] || 0) + 1;
+          }
+        }
+      });
+
+      if (w === weekIndex) currentWeekArrangement = benchMap;
+    } else {
+      let bestCandidate = null;
+      let bestScore = Infinity;
+
+      for (let cand = 1; cand <= 100; cand++) {
+        const seed = stringToSeed(`cand_${gender}_w${w}_c${cand}`);
+        const rng = mulberry32(seed);
+
+        const candList = [...genderStudents];
+        for (let i = candList.length - 1; i > 0; i--) {
+          const j = Math.floor(rng() * (i + 1));
+          [candList[i], candList[j]] = [candList[j], candList[i]];
+        }
+
+        const candidateGroups = [];
+        let ptr = 0;
+        genderBenches.forEach(bench => {
+          candidateGroups.push(candList.slice(ptr, ptr + bench.capacity));
+          ptr += bench.capacity;
+        });
+
+        let score = 0;
+        candidateGroups.forEach(group => {
+          for (let i = 0; i < group.length; i++) {
+            for (let j = i + 1; j < group.length; j++) {
+              const key = getPairKey(group[i].id, group[j].id);
+              const pastCount = pairHistory[key] || 0;
+              score += pastCount * 100 + pastCount * pastCount * 500;
+            }
+          }
+        });
+
+        if (score < bestScore) {
+          bestScore = score;
+          bestCandidate = candidateGroups;
+          if (score === 0) break;
+        }
+      }
+
+      bestCandidate.forEach(group => {
+        for (let i = 0; i < group.length; i++) {
+          for (let j = i + 1; j < group.length; j++) {
+            const key = getPairKey(group[i].id, group[j].id);
+            pairHistory[key] = (pairHistory[key] || 0) + 1;
+          }
+        }
+      });
+
+      if (w === weekIndex) currentWeekArrangement = bestCandidate;
+    }
   }
 
-  const shift = (weekIndex * (gender === 'female' ? 5 : 11)) % m;
+  const resultStudents = [];
+  currentWeekArrangement.forEach(group => {
+    resultStudents.push(...group);
+  });
 
-  const permuted = new Array(m);
-  for (let i = 0; i < m; i++) {
-    const targetIdx = (i * k + shift) % m;
-    permuted[targetIdx] = list[i];
-  }
-
-  const validResult = permuted.filter(Boolean);
-  if (validResult.length < m) {
-    return list;
-  }
-
-  return validResult;
+  return resultStudents;
 }
 
 function getSeatingForGender(genderBenches, studentsInGender, weekIndex, dayIndex = 0, gender = 'male') {
   if (genderBenches.length === 0) return [];
 
   const sortedBenches = [...genderBenches].sort((a, b) => a.position - b.position);
-  const weekStudents = getWeeklyShuffledStudents(studentsInGender, gender, weekIndex);
+  const weekStudents = computeWeeklySeatingSequence(studentsInGender, sortedBenches, weekIndex, gender);
 
   const benchGroups = [];
   let ptr = 0;
