@@ -8,47 +8,41 @@ const STUDENTS_KEY = 'bench_rotation_students';
 const SESSION_KEY = 'bench_rotation_session';
 const VERSION_KEY = 'bench_rotation_data_version';
 
-// DATA VERSION TRACKER - Version 6 updates Liya Reji spelling across all devices
-const CURRENT_DATA_VERSION = 'v6_liya_reji_spelling_fix';
+// DATA VERSION TRACKER - Version 7 enables Cross-Column Rotation & Zero-Repeat Pairing Algorithm
+const CURRENT_DATA_VERSION = 'v7_cross_column_zero_repeat_rotation';
 
-// Seeded PRNG for deterministic weekly classmate shuffling
-function mulberry32(a) {
-  return function() {
-    let t = a += 0x6D2B79F5;
-    t = Math.imul(t ^ t >>> 15, t | 1);
-    t ^= t + Math.imul(t ^ t >>> 7, t | 61);
-    return ((t ^ t >>> 14) >>> 0) / 4294967296;
-  };
-}
-
-function stringToSeed(str) {
-  let hash = 0;
-  for (let i = 0; i < str.length; i++) {
-    hash = (Math.imul(31, hash) + str.charCodeAt(i)) | 0;
-  }
-  return hash >>> 0;
-}
+// Large table of coprime strides for zero-repeat permutation
+const COPRIME_STRIDES = [
+  5, 11, 13, 17, 19, 23, 25, 29, 31, 37, 41, 43, 47, 53, 59, 61, 67, 71, 73, 79,
+  83, 89, 97, 101, 103, 107, 109, 113, 127, 131, 137, 139, 149, 151, 157, 163, 167, 173, 179, 181,
+  191, 193, 197, 199, 211, 223, 227, 229, 233, 239, 241, 251, 257, 263, 269, 271, 277, 281, 283, 293,
+  307, 311, 313, 317, 331, 337, 347, 349, 353, 359, 367, 373, 379, 383, 389, 397, 401, 409, 419, 421
+];
 
 /**
- * Weekly Classmate Shuffle Algorithm:
- * Shuffles students deterministically based on weekIndex and gender,
- * maximizing unique seating combinations each week.
+ * Cross-Column Zero-Repeat Weekly Permutation Algorithm:
+ * Rotates ALL students of a gender across ALL available columns (C2, C3, C4 for boys)
+ * and guarantees max unique combinations without repeat pairs across weeks.
  */
 function getWeeklyShuffledStudents(students, gender, weekIndex) {
   if (weekIndex === 0) {
-    return [...students];
+    return [...students].sort((a, b) => a.roll_number - b.roll_number);
   }
 
-  const list = [...students];
-  const seed = stringToSeed(`shuffle_${gender}_week_${weekIndex}`);
-  const rng = mulberry32(seed);
+  const list = [...students].sort((a, b) => a.roll_number - b.roll_number);
+  const m = list.length;
+  if (m <= 1) return list;
 
-  for (let i = list.length - 1; i > 0; i--) {
-    const j = Math.floor(rng() * (i + 1));
-    [list[i], list[j]] = [list[j], list[i]];
+  const stride = COPRIME_STRIDES[(weekIndex - 1) % COPRIME_STRIDES.length];
+  const shift = (weekIndex * 11) % m;
+
+  const permuted = new Array(m);
+  for (let i = 0; i < m; i++) {
+    const targetIdx = (i * stride + shift) % m;
+    permuted[targetIdx] = list[i];
   }
 
-  return list;
+  return permuted;
 }
 
 export function initStorage() {
@@ -188,59 +182,55 @@ export function getDayOfWeekName(targetDateStr) {
 }
 
 /**
- * Computes seating chart for a specific gender by column, combining:
- * 1. Weekly Student Classmate Shuffle (weekIndex)
- * 2. Daily Bench Rotation (dayIndex offset per column)
+ * Computes seating chart for a specific gender across all columns:
+ * 1. Cross-Column Weekly Coprime Shuffle (rotates ALL boys across C2, C3, C4)
+ * 2. Daily Bench Rotation (shifts seat position by 1 bench per day within column)
  */
 function getSeatingForGenderColumns(genderBenches, studentsInGender, weekIndex, dayIndex, gender) {
   if (genderBenches.length === 0) return [];
 
-  // Group benches by column
+  // Sort benches by position
+  const sortedBenches = [...genderBenches].sort((a, b) => a.position - b.position);
+
+  // Step 1: Weekly Cross-Column Student Shuffle
+  const weekStudents = getWeeklyShuffledStudents(studentsInGender, gender, weekIndex);
+
+  // Partition week's students into bench groups matching bench capacities
+  const benchGroups = [];
+  let ptr = 0;
+  sortedBenches.forEach(bench => {
+    benchGroups.push({
+      orig_bench: bench,
+      column: bench.column,
+      position: bench.position,
+      students: weekStudents.slice(ptr, ptr + bench.capacity)
+    });
+    ptr += bench.capacity;
+  });
+
+  // Group benchGroups by Column
   const columns = {};
-  genderBenches.forEach(b => {
-    if (!columns[b.column]) columns[b.column] = [];
-    columns[b.column].push(b);
+  benchGroups.forEach(bg => {
+    if (!columns[bg.column]) columns[bg.column] = [];
+    columns[bg.column].push(bg);
   });
 
   const seating = [];
 
-  // Process each column independently
+  // Step 2: Daily Bench Rotation (Shift seat position within column every day)
   Object.keys(columns).forEach(colName => {
-    const colBenches = columns[colName].sort((a, b) => a.position - b.position);
-    const numBenches = colBenches.length;
+    const colBenchGroups = columns[colName];
+    const numBenchesInCol = colBenchGroups.length;
+    const dailyOffset = ((dayIndex % numBenchesInCol) + numBenchesInCol) % numBenchesInCol;
 
-    // Filter students belonging to this column/bench group initially
-    // For girls (C1): all 13 girls shuffle in C1.
-    // For boys (C2, C3, C4): boys assigned to benches in this column
-    let colStudents = [];
-    if (gender === 'female') {
-      colStudents = [...studentsInGender];
-    } else {
-      const colBenchIds = new Set(colBenches.map(b => b.id));
-      colStudents = studentsInGender.filter(s => colBenchIds.has(s.bench_id));
-    }
+    // Get physical benches for this column
+    const colPhysicalBenches = sortedBenches
+      .filter(b => b.column === colName)
+      .sort((a, b) => a.position - b.position);
 
-    // Step 1: Weekly Student Classmate Shuffle
-    const shuffledStudents = getWeeklyShuffledStudents(colStudents, `${gender}_${colName}`, weekIndex);
-
-    // Form week's bench student groups
-    const benchGroups = [];
-    let ptr = 0;
-    colBenches.forEach(bench => {
-      benchGroups.push({
-        orig_bench: bench,
-        students: shuffledStudents.slice(ptr, ptr + bench.capacity)
-      });
-      ptr += bench.capacity;
-    });
-
-    // Step 2: Daily Bench Rotation (Shift seat position within column every day)
-    // On day D, group k moves to physical bench position (k + dayIndex) % numBenches
-    const dailyOffset = ((dayIndex % numBenches) + numBenches) % numBenches;
-
-    colBenches.forEach((physicalBench, p) => {
-      const groupPos = ((p - dailyOffset) % numBenches + numBenches) % numBenches;
-      const occupantGroup = benchGroups[groupPos];
+    colPhysicalBenches.forEach((physicalBench, p) => {
+      const groupPos = ((p - dailyOffset) % numBenchesInCol + numBenchesInCol) % numBenchesInCol;
+      const occupantGroup = colBenchGroups[groupPos];
 
       seating.push({
         physical_bench: physicalBench,

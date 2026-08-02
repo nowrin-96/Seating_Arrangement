@@ -1,96 +1,108 @@
 /**
- * Weekly Bench Rotation & Dynamic Classmate Shuffling Logic
+ * Cross-Column Weekly Coprime Rotation & Daily Bench Shift Engine
  */
 
-function mulberry32(a) {
-  return function() {
-    let t = a += 0x6D2B79F5;
-    t = Math.imul(t ^ t >>> 15, t | 1);
-    t ^= t + Math.imul(t ^ t >>> 7, t | 61);
-    return ((t ^ t >>> 14) >>> 0) / 4294967296;
-  };
-}
+const COPRIME_STRIDES = [
+  5, 11, 13, 17, 19, 23, 25, 29, 31, 37, 41, 43, 47, 53, 59, 61, 67, 71, 73, 79,
+  83, 89, 97, 101, 103, 107, 109, 113, 127, 131, 137, 139, 149, 151, 157, 163, 167, 173, 179, 181,
+  191, 193, 197, 199, 211, 223, 227, 229, 233, 239, 241, 251, 257, 263, 269, 271, 277, 281, 283, 293,
+  307, 311, 313, 317, 331, 337, 347, 349, 353, 359, 367, 373, 379, 383, 389, 397, 401, 409, 419, 421
+];
 
-function stringToSeed(str) {
-  let hash = 0;
-  for (let i = 0; i < str.length; i++) {
-    hash = (Math.imul(31, hash) + str.charCodeAt(i)) | 0;
-  }
-  return hash >>> 0;
-}
-
-function getWeekIndex(startDateStr, targetDateStr) {
+function getDaysDiff(startDateStr, targetDateStr) {
   const start = new Date(startDateStr);
   const target = new Date(targetDateStr);
   
   const startUtc = Date.UTC(start.getUTCFullYear(), start.getUTCMonth(), start.getUTCDate());
   const targetUtc = Date.UTC(target.getUTCFullYear(), target.getUTCMonth(), target.getUTCDate());
   
-  const diffDays = Math.floor((targetUtc - startUtc) / (1000 * 60 * 60 * 24));
+  return Math.floor((targetUtc - startUtc) / (1000 * 60 * 60 * 24));
+}
+
+function getWeekIndex(startDateStr, targetDateStr) {
+  const diffDays = getDaysDiff(startDateStr, targetDateStr);
   return Math.floor(diffDays / 7);
 }
 
 function getWeeklyShuffledStudents(students, gender, weekIndex) {
   if (weekIndex === 0) {
-    return [...students];
+    return [...students].sort((a, b) => a.roll_number - b.roll_number);
   }
 
-  const list = [...students];
-  const seed = stringToSeed(`shuffle_${gender}_week_${weekIndex}`);
-  const rng = mulberry32(seed);
+  const list = [...students].sort((a, b) => a.roll_number - b.roll_number);
+  const m = list.length;
+  if (m <= 1) return list;
 
-  for (let i = list.length - 1; i > 0; i--) {
-    const j = Math.floor(rng() * (i + 1));
-    [list[i], list[j]] = [list[j], list[i]];
+  const stride = COPRIME_STRIDES[(weekIndex - 1) % COPRIME_STRIDES.length];
+  const shift = (weekIndex * 11) % m;
+
+  const permuted = new Array(m);
+  for (let i = 0; i < m; i++) {
+    const targetIdx = (i * stride + shift) % m;
+    permuted[targetIdx] = list[i];
   }
 
-  return list;
+  return permuted;
 }
 
-function getSeatingForGender(genderBenches, studentsInGender, weekIndex, gender) {
-  const n = genderBenches.length;
-  if (n === 0) return [];
+function getSeatingForGender(genderBenches, studentsInGender, weekIndex, dayIndex = 0, gender = 'male') {
+  if (genderBenches.length === 0) return [];
 
   const sortedBenches = [...genderBenches].sort((a, b) => a.position - b.position);
+  const weekStudents = getWeeklyShuffledStudents(studentsInGender, gender, weekIndex);
 
-  if (weekIndex === 0) {
-    const studentsByBench = {};
-    sortedBenches.forEach(b => { studentsByBench[b.id] = []; });
-    studentsInGender.forEach(s => {
-      if (studentsByBench[s.bench_id]) {
-        studentsByBench[s.bench_id].push(s);
-      }
+  const benchGroups = [];
+  let ptr = 0;
+  sortedBenches.forEach(bench => {
+    benchGroups.push({
+      orig_bench: bench,
+      column: bench.column || 'C1',
+      students: weekStudents.slice(ptr, ptr + bench.capacity)
     });
+    ptr += bench.capacity;
+  });
 
-    return sortedBenches.map(bench => ({
-      physical_bench: bench,
-      students: studentsByBench[bench.id] || []
-    }));
-  } else {
-    const orderedStudents = getWeeklyShuffledStudents(studentsInGender, gender, weekIndex);
+  const columns = {};
+  benchGroups.forEach(bg => {
+    if (!columns[bg.column]) columns[bg.column] = [];
+    columns[bg.column].push(bg);
+  });
 
-    let studentPointer = 0;
-    return sortedBenches.map(bench => {
-      const benchStudents = orderedStudents.slice(studentPointer, studentPointer + bench.capacity);
-      studentPointer += bench.capacity;
+  const seating = [];
 
-      return {
-        physical_bench: bench,
-        students: benchStudents.map(s => ({
+  Object.keys(columns).forEach(colName => {
+    const colBenchGroups = columns[colName];
+    const numBenchesInCol = colBenchGroups.length;
+    const dailyOffset = ((dayIndex % numBenchesInCol) + numBenchesInCol) % numBenchesInCol;
+
+    const colPhysicalBenches = sortedBenches
+      .filter(b => b.column === colName)
+      .sort((a, b) => a.position - b.position);
+
+    colPhysicalBenches.forEach((physicalBench, p) => {
+      const groupPos = ((p - dailyOffset) % numBenchesInCol + numBenchesInCol) % numBenchesInCol;
+      const occupantGroup = colBenchGroups[groupPos];
+
+      seating.push({
+        physical_bench: physicalBench,
+        column: colName,
+        students: occupantGroup ? occupantGroup.students.map(s => ({
           id: s.id,
           username: s.username,
           full_name: s.full_name,
           roll_number: s.roll_number,
           gender: s.gender,
           orig_bench_id: s.bench_id
-        }))
-      };
+        })) : []
+      });
     });
-  }
+  });
+
+  return seating;
 }
 
-function getStudentCurrentBench(student, allGenderBenches, allGenderStudents, weekIndex) {
-  const seating = getSeatingForGender(allGenderBenches, allGenderStudents, weekIndex, student.gender);
+function getStudentCurrentBench(student, allGenderBenches, allGenderStudents, weekIndex, dayIndex = 0) {
+  const seating = getSeatingForGender(allGenderBenches, allGenderStudents, weekIndex, dayIndex, student.gender);
   
   let currentMatch = null;
   for (const entry of seating) {
@@ -105,6 +117,7 @@ function getStudentCurrentBench(student, allGenderBenches, allGenderStudents, we
 
   return {
     physical_bench: currentMatch.physical_bench,
+    column: currentMatch.column,
     week_index: weekIndex,
     students: currentMatch.students.map(s => ({
       id: s.id,
@@ -117,6 +130,7 @@ function getStudentCurrentBench(student, allGenderBenches, allGenderStudents, we
 
 module.exports = {
   getWeekIndex,
+  getDaysDiff,
   getSeatingForGender,
   getStudentCurrentBench
 };
