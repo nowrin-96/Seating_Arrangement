@@ -47,7 +47,7 @@ async function testAll() {
     const adminRes = await request('/api/auth/login', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' }
-    }, { username: 'admin', password: 'admin123' });
+    }, { username: 'admin', password: 'ajce2024' });
 
     if (adminRes.status === 200 && adminRes.body.user.role === 'admin') {
       console.log('  ✅ PASSED: Admin logged in successfully as role "admin".');

@@ -14,7 +14,7 @@ export const INITIAL_CONFIG = {
 
 export const INITIAL_ADMIN = {
   username: 'admin',
-  passwordHash: bcrypt.hashSync('admin123', 10)
+  passwordHash: bcrypt.hashSync('ajce2024', 10)
 };
 
 // 20 BENCHES TOTAL (4 Columns x 5 Benches)
