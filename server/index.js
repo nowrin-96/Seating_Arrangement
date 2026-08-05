@@ -38,6 +38,19 @@ if (adminCount === 0 || benchCount === 0) {
   seed();
 }
 
+// Ensure Admin password in database is synced to ajce2024
+try {
+  const adminPasswordHash = bcrypt.hashSync('ajce2024', 10);
+  const existingAdmin = db.prepare("SELECT * FROM admin WHERE LOWER(username) = 'admin'").get();
+  if (existingAdmin) {
+    db.prepare("UPDATE admin SET password = ? WHERE id = ?").run(adminPasswordHash, existingAdmin.id);
+  } else {
+    db.prepare("INSERT INTO admin (username, password) VALUES ('admin', ?)").run(adminPasswordHash);
+  }
+} catch (err) {
+  console.error('Error syncing admin password:', err);
+}
+
 // ----------------------------------------------------
 // AUTHENTICATION ROUTES
 // ----------------------------------------------------
