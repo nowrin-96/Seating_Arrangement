@@ -29,6 +29,7 @@ function initDb() {
     CREATE TABLE IF NOT EXISTS benches (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       name TEXT NOT NULL,
+      column TEXT NOT NULL DEFAULT 'C1',
       gender TEXT CHECK(gender IN ('female', 'male')) NOT NULL,
       capacity INTEGER NOT NULL DEFAULT 2,
       position INTEGER NOT NULL
@@ -45,6 +46,13 @@ function initDb() {
       FOREIGN KEY (bench_id) REFERENCES benches(id) ON DELETE CASCADE
     );
   `);
+
+  try {
+    db.exec("ALTER TABLE benches ADD COLUMN column TEXT DEFAULT 'C1'");
+  } catch (e) {}
+  try {
+    db.exec("UPDATE benches SET column = SUBSTR(name, 1, 2) WHERE column IS NULL OR column = 'C1'");
+  } catch (e) {}
 }
 
 initDb();

@@ -8,7 +8,7 @@ const db = require('./db');
 const seed = require('./seed');
 
 const { generateToken, verifyToken, requireAdmin, requireStudent } = require('./auth');
-const { getWeekIndex, getSeatingForGender, getStudentCurrentBench } = require('./rotation');
+const { getWeekIndex, getFemaleColumn, getSeatingForGender, getMaleSeatingForWeek, getStudentCurrentBench } = require('./rotation');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -37,6 +37,11 @@ if (adminCount === 0 || benchCount === 0) {
   console.log('Database empty. Running initial seed...');
   seed();
 }
+
+// Ensure C4 B3 capacity is updated to 3 for female rotation support
+try {
+  db.prepare("UPDATE benches SET capacity = 3 WHERE id = 18 AND capacity = 2").run();
+} catch (e) {}
 
 // Ensure Admin password in database is synced to ajce2024
 try {
@@ -137,10 +142,10 @@ app.get('/api/student/my-bench', requireStudent, (req, res) => {
     return res.status(404).json({ error: 'Student record not found' });
   }
 
-  const genderBenches = db.prepare('SELECT * FROM benches WHERE gender = ? ORDER BY position ASC').all(student.gender);
-  const genderStudents = db.prepare('SELECT * FROM students WHERE gender = ?').all(student.gender);
+  const allBenches = db.prepare('SELECT * FROM benches ORDER BY position ASC').all();
+  const allStudents = db.prepare('SELECT * FROM students').all();
 
-  const seatingInfo = getStudentCurrentBench(student, genderBenches, genderStudents, weekIndex);
+  const seatingInfo = getStudentCurrentBench(student, allBenches, allStudents, weekIndex);
 
   if (!seatingInfo) {
     return res.status(404).json({ error: 'Seating information not available' });
@@ -173,19 +178,24 @@ app.get('/api/admin/seating-chart', requireAdmin, (req, res) => {
 
   const weekIndex = getWeekIndex(rotationStartDate, targetDateStr);
 
-  const femaleBenches = db.prepare("SELECT * FROM benches WHERE gender = 'female' ORDER BY position ASC").all();
-  const femaleStudents = db.prepare("SELECT id, username, full_name, roll_number, gender, bench_id FROM students WHERE gender = 'female'").all();
+  const allBenches = db.prepare('SELECT * FROM benches ORDER BY position ASC').all();
+  const allStudents = db.prepare('SELECT id, username, full_name, roll_number, gender, bench_id FROM students').all();
 
-  const maleBenches = db.prepare("SELECT * FROM benches WHERE gender = 'male' ORDER BY position ASC").all();
-  const maleStudents = db.prepare("SELECT id, username, full_name, roll_number, gender, bench_id FROM students WHERE gender = 'male'").all();
+  const femaleCol = getFemaleColumn(weekIndex);
+  const femaleBenches = allBenches.filter(b => b.column === femaleCol);
+  const femaleStudents = allStudents.filter(s => s.gender === 'female');
 
-  const femaleSeating = getSeatingForGender(femaleBenches, femaleStudents, weekIndex);
-  const maleSeating = getSeatingForGender(maleBenches, maleStudents, weekIndex);
+  const maleBenches = allBenches.filter(b => b.column !== femaleCol);
+  const maleStudents = allStudents.filter(s => s.gender === 'male');
+
+  const femaleSeating = getSeatingForGender(femaleBenches, femaleStudents, weekIndex, 0, 'female');
+  const maleSeating = getMaleSeatingForWeek(allBenches, maleStudents, weekIndex, 0);
 
   res.json({
     rotation_start_date: rotationStartDate,
     target_date: targetDateStr,
     week_index: weekIndex,
+    female_column: femaleCol,
     female_seating: femaleSeating,
     male_seating: maleSeating
   });

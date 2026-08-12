@@ -4,8 +4,8 @@ import bcrypt from 'bcryptjs';
  * CLASSROOM SEATING & STUDENT DATA TEMPLATE
  * 
  * 4 Columns (C1, C2, C3, C4) with 5 Benches each = 20 Benches Total
- * C1 (Girls): 5 Benches (13 Seats: C1 B1(3), C1 B2(3), C1 B3(3), C1 B4(2), C1 B5(2))
- * C2, C3, C4 (Boys): 15 Benches (42 Seats)
+ * Girls rotate across Columns C1, C2, C3, C4 weekly.
+ * C1 (13 Seats), C2 (15 Seats), C3 (15 Seats), C4 (13 Seats)
  */
 
 export const INITIAL_CONFIG = {
@@ -17,34 +17,34 @@ export const INITIAL_ADMIN = {
   passwordHash: bcrypt.hashSync('ajce2024', 10)
 };
 
-// 20 BENCHES TOTAL (4 Columns x 5 Benches)
+// 20 BENCHES TOTAL (4 Columns x 5 Benches, 14 Seats per Column = 56 Total Seats)
 export const INITIAL_BENCHES = [
-  // COLUMN C1 (GIRLS - 5 Benches, 13 Seats Total)
+  // COLUMN C1 (5 Benches, 14 Seats Total)
   { id: 1, name: 'C1 B1', gender: 'female', column: 'C1', capacity: 3, position: 0 },
   { id: 2, name: 'C1 B2', gender: 'female', column: 'C1', capacity: 3, position: 1 },
   { id: 3, name: 'C1 B3', gender: 'female', column: 'C1', capacity: 3, position: 2 },
-  { id: 4, name: 'C1 B4', gender: 'female', column: 'C1', capacity: 2, position: 3 },
+  { id: 4, name: 'C1 B4', gender: 'female', column: 'C1', capacity: 3, position: 3 },
   { id: 5, name: 'C1 B5', gender: 'female', column: 'C1', capacity: 2, position: 4 },
 
-  // COLUMN C2 (BOYS - 5 Benches, 15 Seats Total)
+  // COLUMN C2 (5 Benches, 14 Seats Total)
   { id: 6, name: 'C2 B1', gender: 'male', column: 'C2', capacity: 3, position: 0 },
   { id: 7, name: 'C2 B2', gender: 'male', column: 'C2', capacity: 3, position: 1 },
   { id: 8, name: 'C2 B3', gender: 'male', column: 'C2', capacity: 3, position: 2 },
   { id: 9, name: 'C2 B4', gender: 'male', column: 'C2', capacity: 3, position: 3 },
-  { id: 10, name: 'C2 B5', gender: 'male', column: 'C2', capacity: 3, position: 4 },
+  { id: 10, name: 'C2 B5', gender: 'male', column: 'C2', capacity: 2, position: 4 },
 
-  // COLUMN C3 (BOYS - 5 Benches, 15 Seats Total)
+  // COLUMN C3 (5 Benches, 14 Seats Total)
   { id: 11, name: 'C3 B1', gender: 'male', column: 'C3', capacity: 3, position: 5 },
   { id: 12, name: 'C3 B2', gender: 'male', column: 'C3', capacity: 3, position: 6 },
   { id: 13, name: 'C3 B3', gender: 'male', column: 'C3', capacity: 3, position: 7 },
   { id: 14, name: 'C3 B4', gender: 'male', column: 'C3', capacity: 3, position: 8 },
-  { id: 15, name: 'C3 B5', gender: 'male', column: 'C3', capacity: 3, position: 9 },
+  { id: 15, name: 'C3 B5', gender: 'male', column: 'C3', capacity: 2, position: 9 },
 
-  // COLUMN C4 (BOYS - 5 Benches, 12 Seats Total)
+  // COLUMN C4 (5 Benches, 14 Seats Total)
   { id: 16, name: 'C4 B1', gender: 'male', column: 'C4', capacity: 3, position: 10 },
   { id: 17, name: 'C4 B2', gender: 'male', column: 'C4', capacity: 3, position: 11 },
-  { id: 18, name: 'C4 B3', gender: 'male', column: 'C4', capacity: 2, position: 12 },
-  { id: 19, name: 'C4 B4', gender: 'male', column: 'C4', capacity: 2, position: 13 },
+  { id: 18, name: 'C4 B3', gender: 'male', column: 'C4', capacity: 3, position: 12 },
+  { id: 19, name: 'C4 B4', gender: 'male', column: 'C4', capacity: 3, position: 13 },
   { id: 20, name: 'C4 B5', gender: 'male', column: 'C4', capacity: 2, position: 14 }
 ];
 

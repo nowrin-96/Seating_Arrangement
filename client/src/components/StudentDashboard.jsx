@@ -142,11 +142,11 @@ export default function StudentDashboard({ user }) {
           <div className="mt-6 pt-4 border-t border-slate-800/80 space-y-1.5 text-[11px] text-slate-400">
             <div className="flex items-center space-x-1.5 text-emerald-400 font-semibold">
               <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
-              <span>Daily Seat Rotation: Moves down 1 bench every day.</span>
+              <span>Daily Seat Rotation: Moves down 1 bench every day within your column.</span>
             </div>
             <div className="flex items-center space-x-1.5 text-amber-400 font-semibold">
               <RotateCcw className="w-3.5 h-3.5 shrink-0" />
-              <span>Weekly Student Shuffle: Partners change every week.</span>
+              <span>Universal Column Rotation: All students rotate through Columns C1, C2, C3, and C4 every 4 weeks.</span>
             </div>
           </div>
 

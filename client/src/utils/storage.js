@@ -8,8 +8,15 @@ const STUDENTS_KEY = 'bench_rotation_students';
 const SESSION_KEY = 'bench_rotation_session';
 const VERSION_KEY = 'bench_rotation_data_version';
 
-// DATA VERSION TRACKER - Version 11: Force reset admin credentials to ajce2024
-const CURRENT_DATA_VERSION = 'v11_force_admin_password_ajce2024';
+// DATA VERSION TRACKER - Version 15: Pooled 42-boys shuffle across all 4 columns & balanced seating
+const CURRENT_DATA_VERSION = 'v15_full_42_boys_pool_shuffle';
+
+const ALL_COLUMNS = ['C1', 'C2', 'C3', 'C4'];
+
+export function getFemaleColumn(weekIndex) {
+  const idx = ((weekIndex % 4) + 4) % 4;
+  return ALL_COLUMNS[idx];
+}
 
 function mulberry32(a) {
   return function() {
@@ -32,6 +39,39 @@ function getPairKey(idA, idB) {
   return idA < idB ? `${idA}_${idB}` : `${idB}_${idA}`;
 }
 
+function partitionStudentsIntoBenches(students, benches) {
+  const N = students.length;
+  const B = benches.length;
+  if (N === 0 || B === 0) return [];
+
+  const baseSize = Math.floor(N / B);
+  const remainder = N % B;
+
+  const benchGroups = [];
+  let ptr = 0;
+
+  benches.forEach((bench, i) => {
+    const targetCap = baseSize + (i < remainder ? 1 : 0);
+    const count = Math.min(targetCap, bench.capacity);
+    const group = students.slice(ptr, ptr + count);
+    benchGroups.push(group);
+    ptr += count;
+  });
+
+  if (ptr < N) {
+    for (let i = 0; i < benchGroups.length && ptr < N; i++) {
+      const spare = benches[i].capacity - benchGroups[i].length;
+      if (spare > 0) {
+        const take = Math.min(spare, N - ptr);
+        benchGroups[i].push(...students.slice(ptr, ptr + take));
+        ptr += take;
+      }
+    }
+  }
+
+  return benchGroups;
+}
+
 /**
  * Greedy Pair-Tracking Weekly Seating Algorithm:
  * Evaluates candidate shuffles against all past weeks (0..W-1) and picks candidate with ZERO pair collisions.
@@ -39,8 +79,7 @@ function getPairKey(idA, idB) {
 function computeWeeklySeatingSequence(students, benches, weekIndex, gender) {
   const genderStudents = [...students].filter(s => s.gender === gender)
     .sort((a, b) => (parseInt(a.roll_number) || 0) - (parseInt(b.roll_number) || 0));
-  const genderBenches = [...benches].filter(b => b.gender === gender)
-    .sort((a, b) => a.position - b.position);
+  const genderBenches = [...benches].sort((a, b) => a.position - b.position);
 
   if (genderStudents.length === 0 || genderBenches.length === 0) return [];
 
@@ -52,13 +91,7 @@ function computeWeeklySeatingSequence(students, benches, weekIndex, gender) {
   for (let w = 0; w <= weekIndex; w++) {
     if (w === 0) {
       // Week 0 base seating
-      const benchMap = [];
-      let ptr = 0;
-      genderBenches.forEach(bench => {
-        const group = genderStudents.slice(ptr, ptr + bench.capacity);
-        benchMap.push(group);
-        ptr += bench.capacity;
-      });
+      const benchMap = partitionStudentsIntoBenches(genderStudents, genderBenches);
 
       // Record pairs for Week 0
       benchMap.forEach(group => {
@@ -87,12 +120,7 @@ function computeWeeklySeatingSequence(students, benches, weekIndex, gender) {
         }
 
         // Partition into bench groups matching capacities
-        const candidateGroups = [];
-        let ptr = 0;
-        genderBenches.forEach(bench => {
-          candidateGroups.push(candList.slice(ptr, ptr + bench.capacity));
-          ptr += bench.capacity;
-        });
+        const candidateGroups = partitionStudentsIntoBenches(candList, genderBenches);
 
         // Score candidate based on past pair collisions
         let score = 0;
@@ -314,19 +342,14 @@ function getSeatingForGenderColumns(genderBenches, studentsInGender, weekIndex, 
   // Step 1: Compute Week's Seating using Pair Collision Solver
   const weekStudents = computeWeeklySeatingSequence(studentsInGender, sortedBenches, weekIndex, gender);
 
-  // Partition week's students into bench groups matching bench capacities
-  const benchGroups = [];
-  let ptr = 0;
-  sortedBenches.forEach(bench => {
-    const occupantStudents = weekStudents.slice(ptr, ptr + bench.capacity);
-    benchGroups.push({
-      orig_bench: bench,
-      column: bench.column || (gender === 'female' ? 'C1' : 'C2'),
-      position: bench.position,
-      students: occupantStudents
-    });
-    ptr += bench.capacity;
-  });
+  // Partition week's students into bench groups matching balanced bench capacities
+  const partitionedGroups = partitionStudentsIntoBenches(weekStudents, sortedBenches);
+  const benchGroups = sortedBenches.map((bench, idx) => ({
+    orig_bench: bench,
+    column: bench.column || (gender === 'female' ? 'C1' : 'C2'),
+    position: bench.position,
+    students: partitionedGroups[idx] || []
+  }));
 
   // Group benchGroups by Column
   const columns = {};
@@ -369,6 +392,33 @@ function getSeatingForGenderColumns(genderBenches, studentsInGender, weekIndex, 
   return seating;
 }
 
+function getMaleSeatingForWeek(allBenches, maleStudents, weekIndex, dayIndex = 0) {
+  const femaleCol = getFemaleColumn(weekIndex);
+  const otherCols = ALL_COLUMNS.filter(c => c !== femaleCol);
+
+  const sortedMaleStudents = [...maleStudents].sort((a, b) => (parseInt(a.roll_number) || 0) - (parseInt(b.roll_number) || 0));
+
+  const subgroupSize = Math.ceil(sortedMaleStudents.length / 3);
+  const subgroups = [
+    sortedMaleStudents.slice(0, subgroupSize),
+    sortedMaleStudents.slice(subgroupSize, subgroupSize * 2),
+    sortedMaleStudents.slice(subgroupSize * 2)
+  ];
+
+  const maleSeating = [];
+
+  subgroups.forEach((groupStudents, g) => {
+    if (groupStudents.length === 0) return;
+    const targetCol = otherCols[(g + weekIndex) % 3];
+    const groupColBenches = allBenches.filter(b => b.column === targetCol);
+
+    const groupSeating = getSeatingForGenderColumns(groupColBenches, groupStudents, weekIndex, dayIndex, 'male');
+    maleSeating.push(...groupSeating);
+  });
+
+  return maleSeating;
+}
+
 export function getSeatingChart(targetDateStr) {
   const config = getConfig();
   const benches = getBenches();
@@ -379,14 +429,14 @@ export function getSeatingChart(targetDateStr) {
   const dayIndex = ((diffDays % 7) + 7) % 7;
   const dayName = getDayOfWeekName(targetDateStr);
 
-  const femaleBenches = benches.filter(b => b.gender === 'female');
-  const femaleStudents = students.filter(s => s.gender === 'female');
+  const femaleCol = getFemaleColumn(weekIndex);
 
-  const maleBenches = benches.filter(b => b.gender === 'male');
+  const femaleBenches = benches.filter(b => b.column === femaleCol);
+  const femaleStudents = students.filter(s => s.gender === 'female');
   const maleStudents = students.filter(s => s.gender === 'male');
 
   const femaleSeating = getSeatingForGenderColumns(femaleBenches, femaleStudents, weekIndex, dayIndex, 'female');
-  const maleSeating = getSeatingForGenderColumns(maleBenches, maleStudents, weekIndex, dayIndex, 'male');
+  const maleSeating = getMaleSeatingForWeek(benches, maleStudents, weekIndex, dayIndex);
 
   return {
     rotation_start_date: config.rotation_start_date,
@@ -394,6 +444,7 @@ export function getSeatingChart(targetDateStr) {
     week_index: weekIndex,
     day_index: dayIndex,
     day_name: dayName,
+    female_column: femaleCol,
     female_seating: femaleSeating,
     male_seating: maleSeating
   };

@@ -19,13 +19,15 @@ export default function SeatingChart({
 
   const { rotation_start_date, week_index, day_name, female_seating, male_seating } = seatingData;
 
-  // Group seating by Column name
-  const columns = {
-    C1: female_seating,
-    C2: male_seating.filter(s => s.physical_bench.column === 'C2'),
-    C3: male_seating.filter(s => s.physical_bench.column === 'C3'),
-    C4: male_seating.filter(s => s.physical_bench.column === 'C4')
-  };
+  const colKeys = ['C1', 'C2', 'C3', 'C4'];
+
+  // Group seating by Column name dynamically
+  const columns = {};
+  colKeys.forEach(colKey => {
+    const fInCol = (female_seating || []).filter(s => s.physical_bench.column === colKey);
+    const mInCol = (male_seating || []).filter(s => s.physical_bench.column === colKey);
+    columns[colKey] = [...fInCol, ...mInCol].sort((a, b) => a.physical_bench.position - b.physical_bench.position);
+  });
 
   return (
     <div className="space-y-8">
@@ -91,203 +93,71 @@ export default function SeatingChart({
         <Info className="w-5 h-5 text-emerald-400 shrink-0 mt-0.5" />
         <div className="space-y-1">
           <div><strong className="text-white">Daily Seat Rotation:</strong> Benches in each column shift down 1 seat position every day.</div>
-          <div><strong className="text-white">Weekly Student Shuffle:</strong> Classmate partners deterministically shuffle every Monday (C1 Girls among C1, C2–C4 Boys among C2–C4).</div>
+          <div><strong className="text-white">Universal Column Rotation:</strong> All students (girls & boys) rotate through Columns C1, C2, C3, and C4 over a 4-week cycle with 0 repeat benchmates.</div>
         </div>
       </div>
 
-      {/* 4 COLUMNS LAYOUT (C1 Girls, C2 Boys, C3 Boys, C4 Boys) */}
+      {/* 4 COLUMNS LAYOUT */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        {/* COLUMN C1 (GIRLS - 5 BENCHES) */}
-        <div className="space-y-4">
-          <div className="flex items-center space-x-2 border-b border-pink-500/40 pb-2">
-            <Layers className="w-4 h-4 text-pink-400" />
-            <h3 className="text-sm font-bold text-pink-300 uppercase tracking-wider">
-              Column C1 (Girls - 5 Benches)
-            </h3>
-          </div>
+        {colKeys.map(colKey => {
+          const colBenches = columns[colKey] || [];
+          const isGirlsCol = colBenches.some(b => b.students && b.students.some(s => s.gender === 'female'));
 
-          <div className="space-y-3">
-            {columns.C1.map(({ physical_bench, students }) => (
-              <div
-                key={physical_bench.id}
-                className="bench-wood-card female-glow rounded-xl p-3.5 flex flex-col justify-between"
-              >
-                <div>
-                  <div className="flex items-center justify-between border-b border-slate-800/80 pb-2 mb-2.5">
-                    <span className="text-base font-black text-pink-400 font-mono">{physical_bench.name}</span>
-                    <div className="flex items-center space-x-1 text-slate-400 text-xs font-medium">
-                      <Users className="w-3.5 h-3.5 text-pink-400" />
-                      <span>{students.length}/{physical_bench.capacity} Seats</span>
+          return (
+            <div key={colKey} className="space-y-4">
+              <div className={`flex items-center space-x-2 border-b pb-2 ${isGirlsCol ? 'border-pink-500/40' : 'border-blue-500/40'}`}>
+                <Layers className={`w-4 h-4 ${isGirlsCol ? 'text-pink-400' : 'text-blue-400'}`} />
+                <h3 className={`text-sm font-bold uppercase tracking-wider ${isGirlsCol ? 'text-pink-300' : 'text-blue-300'}`}>
+                  Column {colKey} ({isGirlsCol ? 'Girls' : 'Boys'} - 5 Benches)
+                </h3>
+              </div>
+
+              <div className="space-y-3">
+                {colBenches.map(({ physical_bench, students }) => (
+                  <div
+                    key={physical_bench.id}
+                    className={`bench-wood-card rounded-xl p-3.5 flex flex-col justify-between ${isGirlsCol ? 'female-glow' : 'male-glow'}`}
+                  >
+                    <div>
+                      <div className="flex items-center justify-between border-b border-slate-800/80 pb-2 mb-2.5">
+                        <span className={`text-base font-black font-mono ${isGirlsCol ? 'text-pink-400' : 'text-blue-400'}`}>
+                          {physical_bench.name}
+                        </span>
+                        <div className="flex items-center space-x-1 text-slate-400 text-xs font-medium">
+                          <Users className={`w-3.5 h-3.5 ${isGirlsCol ? 'text-pink-400' : 'text-blue-400'}`} />
+                          <span>{students.length}/{physical_bench.capacity} Seats</span>
+                        </div>
+                      </div>
+
+                      <div className="space-y-1.5">
+                        {students.map((student) => (
+                          <div
+                            key={student.id}
+                            className="bg-slate-900/80 border border-slate-800 rounded-lg p-1.5 flex items-center justify-between"
+                          >
+                            <div className="flex items-center space-x-1.5 overflow-hidden">
+                              <User className={`w-3 h-3 shrink-0 ${student.gender === 'female' ? 'text-pink-400' : 'text-blue-400'}`} />
+                              <span className="text-xs font-semibold text-slate-200 truncate">
+                                {student.full_name}
+                              </span>
+                            </div>
+                            <span className={`text-[10px] font-mono font-bold px-1 py-0.5 rounded border ${
+                              student.gender === 'female'
+                                ? 'text-pink-300 bg-pink-950/60 border-pink-900/40'
+                                : 'text-blue-300 bg-blue-950/60 border-blue-900/40'
+                            }`}>
+                              {student.roll_number}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
                     </div>
                   </div>
-
-                  <div className="space-y-1.5">
-                    {students.map((student) => (
-                      <div
-                        key={student.id}
-                        className="bg-slate-900/80 border border-slate-800 rounded-lg p-1.5 flex items-center justify-between"
-                      >
-                        <div className="flex items-center space-x-1.5 overflow-hidden">
-                          <User className="w-3 h-3 text-pink-400 shrink-0" />
-                          <span className="text-xs font-semibold text-slate-200 truncate">
-                            {student.full_name}
-                          </span>
-                        </div>
-                        <span className="text-[10px] font-mono font-bold text-pink-300 bg-pink-950/60 px-1 py-0.5 rounded border border-pink-900/40">
-                          {student.roll_number}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
+                ))}
               </div>
-            ))}
-          </div>
-        </div>
-
-        {/* COLUMN C2 (BOYS - 5 BENCHES) */}
-        <div className="space-y-4">
-          <div className="flex items-center space-x-2 border-b border-blue-500/40 pb-2">
-            <Layers className="w-4 h-4 text-blue-400" />
-            <h3 className="text-sm font-bold text-blue-300 uppercase tracking-wider">
-              Column C2 (Boys - 5 Benches)
-            </h3>
-          </div>
-
-          <div className="space-y-3">
-            {columns.C2.map(({ physical_bench, students }) => (
-              <div
-                key={physical_bench.id}
-                className="bench-wood-card male-glow rounded-xl p-3.5 flex flex-col justify-between"
-              >
-                <div>
-                  <div className="flex items-center justify-between border-b border-slate-800/80 pb-2 mb-2.5">
-                    <span className="text-base font-black text-blue-400 font-mono">{physical_bench.name}</span>
-                    <div className="flex items-center space-x-1 text-slate-400 text-xs font-medium">
-                      <Users className="w-3.5 h-3.5 text-blue-400" />
-                      <span>{students.length}/{physical_bench.capacity} Seats</span>
-                    </div>
-                  </div>
-
-                  <div className="space-y-1.5">
-                    {students.map((student) => (
-                      <div
-                        key={student.id}
-                        className="bg-slate-900/80 border border-slate-800 rounded-lg p-1.5 flex items-center justify-between"
-                      >
-                        <div className="flex items-center space-x-1.5 overflow-hidden">
-                          <User className="w-3 h-3 text-blue-400 shrink-0" />
-                          <span className="text-xs font-semibold text-slate-200 truncate">
-                            {student.full_name}
-                          </span>
-                        </div>
-                        <span className="text-[10px] font-mono font-bold text-blue-300 bg-blue-950/60 px-1 py-0.5 rounded border border-blue-900/40">
-                          {student.roll_number}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* COLUMN C3 (BOYS - 5 BENCHES) */}
-        <div className="space-y-4">
-          <div className="flex items-center space-x-2 border-b border-blue-500/40 pb-2">
-            <Layers className="w-4 h-4 text-blue-400" />
-            <h3 className="text-sm font-bold text-blue-300 uppercase tracking-wider">
-              Column C3 (Boys - 5 Benches)
-            </h3>
-          </div>
-
-          <div className="space-y-3">
-            {columns.C3.map(({ physical_bench, students }) => (
-              <div
-                key={physical_bench.id}
-                className="bench-wood-card male-glow rounded-xl p-3.5 flex flex-col justify-between"
-              >
-                <div>
-                  <div className="flex items-center justify-between border-b border-slate-800/80 pb-2 mb-2.5">
-                    <span className="text-base font-black text-blue-400 font-mono">{physical_bench.name}</span>
-                    <div className="flex items-center space-x-1 text-slate-400 text-xs font-medium">
-                      <Users className="w-3.5 h-3.5 text-blue-400" />
-                      <span>{students.length}/{physical_bench.capacity} Seats</span>
-                    </div>
-                  </div>
-
-                  <div className="space-y-1.5">
-                    {students.map((student) => (
-                      <div
-                        key={student.id}
-                        className="bg-slate-900/80 border border-slate-800 rounded-lg p-1.5 flex items-center justify-between"
-                      >
-                        <div className="flex items-center space-x-1.5 overflow-hidden">
-                          <User className="w-3 h-3 text-blue-400 shrink-0" />
-                          <span className="text-xs font-semibold text-slate-200 truncate">
-                            {student.full_name}
-                          </span>
-                        </div>
-                        <span className="text-[10px] font-mono font-bold text-blue-300 bg-blue-950/60 px-1 py-0.5 rounded border border-blue-900/40">
-                          {student.roll_number}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* COLUMN C4 (BOYS - 5 BENCHES) */}
-        <div className="space-y-4">
-          <div className="flex items-center space-x-2 border-b border-blue-500/40 pb-2">
-            <Layers className="w-4 h-4 text-blue-400" />
-            <h3 className="text-sm font-bold text-blue-300 uppercase tracking-wider">
-              Column C4 (Boys - 5 Benches)
-            </h3>
-          </div>
-
-          <div className="space-y-3">
-            {columns.C4.map(({ physical_bench, students }) => (
-              <div
-                key={physical_bench.id}
-                className="bench-wood-card male-glow rounded-xl p-3.5 flex flex-col justify-between"
-              >
-                <div>
-                  <div className="flex items-center justify-between border-b border-slate-800/80 pb-2 mb-2.5">
-                    <span className="text-base font-black text-blue-400 font-mono">{physical_bench.name}</span>
-                    <div className="flex items-center space-x-1 text-slate-400 text-xs font-medium">
-                      <Users className="w-3.5 h-3.5 text-blue-400" />
-                      <span>{students.length}/{physical_bench.capacity} Seats</span>
-                    </div>
-                  </div>
-
-                  <div className="space-y-1.5">
-                    {students.map((student) => (
-                      <div
-                        key={student.id}
-                        className="bg-slate-900/80 border border-slate-800 rounded-lg p-1.5 flex items-center justify-between"
-                      >
-                        <div className="flex items-center space-x-1.5 overflow-hidden">
-                          <User className="w-3 h-3 text-blue-400 shrink-0" />
-                          <span className="text-xs font-semibold text-slate-200 truncate">
-                            {student.full_name}
-                          </span>
-                        </div>
-                        <span className="text-[10px] font-mono font-bold text-blue-300 bg-blue-950/60 px-1 py-0.5 rounded border border-blue-900/40">
-                          {student.roll_number}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
+            </div>
+          );
+        })}
       </div>
     </div>
   );

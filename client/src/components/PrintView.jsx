@@ -10,12 +10,13 @@ export default function PrintView({ seatingData, onClose }) {
     window.print();
   };
 
-  const columns = {
-    C1: female_seating,
-    C2: male_seating.filter(s => s.physical_bench.column === 'C2'),
-    C3: male_seating.filter(s => s.physical_bench.column === 'C3'),
-    C4: male_seating.filter(s => s.physical_bench.column === 'C4')
-  };
+  const colKeys = ['C1', 'C2', 'C3', 'C4'];
+  const columns = {};
+  colKeys.forEach(colKey => {
+    const fInCol = (female_seating || []).filter(s => s.physical_bench.column === colKey);
+    const mInCol = (male_seating || []).filter(s => s.physical_bench.column === colKey);
+    columns[colKey] = [...fInCol, ...mInCol].sort((a, b) => a.physical_bench.position - b.physical_bench.position);
+  });
 
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-950/90 backdrop-blur-md p-4 sm:p-8">
@@ -60,32 +61,37 @@ export default function PrintView({ seatingData, onClose }) {
 
         {/* 4 Columns Layout */}
         <div className="grid grid-cols-4 gap-4">
-          {Object.keys(columns).map(colName => (
-            <div key={colName} className="space-y-3">
-              <h2 className={`text-xs font-bold uppercase tracking-wider border-b pb-1 ${colName === 'C1' ? 'text-pink-700 border-pink-300' : 'text-blue-700 border-blue-300'}`}>
-                Column {colName} ({colName === 'C1' ? 'Girls' : 'Boys'})
-              </h2>
+          {colKeys.map(colName => {
+            const colBenches = columns[colName] || [];
+            const isGirlsCol = colBenches.some(b => b.students && b.students.some(s => s.gender === 'female'));
 
-              <div className="space-y-2">
-                {columns[colName].map(({ physical_bench, students }) => (
-                  <div key={physical_bench.id} className="border border-slate-400 p-2 rounded bg-slate-50 print-bench-card">
-                    <div className="flex justify-between items-center border-b border-slate-300 pb-1 mb-1">
-                      <span className="font-extrabold text-xs text-slate-900">{physical_bench.name}</span>
-                      <span className="text-[9px] text-slate-600">{students.length}/{physical_bench.capacity} Seats</span>
+            return (
+              <div key={colName} className="space-y-3">
+                <h2 className={`text-xs font-bold uppercase tracking-wider border-b pb-1 ${isGirlsCol ? 'text-pink-700 border-pink-300' : 'text-blue-700 border-blue-300'}`}>
+                  Column {colName} ({isGirlsCol ? 'Girls' : 'Boys'})
+                </h2>
+
+                <div className="space-y-2">
+                  {colBenches.map(({ physical_bench, students }) => (
+                    <div key={physical_bench.id} className="border border-slate-400 p-2 rounded bg-slate-50 print-bench-card">
+                      <div className="flex justify-between items-center border-b border-slate-300 pb-1 mb-1">
+                        <span className="font-extrabold text-xs text-slate-900">{physical_bench.name}</span>
+                        <span className="text-[9px] text-slate-600">{students.length}/{physical_bench.capacity} Seats</span>
+                      </div>
+                      <div className="space-y-0.5">
+                        {students.map(s => (
+                          <div key={s.id} className="text-[11px] flex justify-between">
+                            <span className="font-semibold text-slate-900 truncate pr-1">{s.full_name}</span>
+                            <span className="text-[9px] font-mono text-slate-600">{s.roll_number}</span>
+                          </div>
+                        ))}
+                      </div>
                     </div>
-                    <div className="space-y-0.5">
-                      {students.map(s => (
-                        <div key={s.id} className="text-[11px] flex justify-between">
-                          <span className="font-semibold text-slate-900 truncate pr-1">{s.full_name}</span>
-                          <span className="text-[9px] font-mono text-slate-600">{s.roll_number}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                ))}
+                  ))}
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </div>
     </div>
