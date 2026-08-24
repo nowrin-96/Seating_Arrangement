@@ -21,17 +21,17 @@ export default function Navbar({ user, onLogout, onOpenPrint, onOpenBackup }) {
         {/* User Status & Actions */}
         {user ? (
           <div className="flex items-center space-x-3 sm:space-x-4">
-            {/* Role Badge */}
+            {/* Role Badge / Portal Indicator */}
             <div className="flex items-center space-x-2 bg-slate-800/80 px-3 py-1.5 rounded-lg border border-slate-700">
               {user.role === 'admin' ? (
                 <>
                   <Shield className="w-4 h-4 text-amber-400" />
-                  <span className="text-xs font-semibold text-amber-300 uppercase tracking-wider">Admin</span>
+                  <span className="text-xs font-semibold text-amber-300 uppercase tracking-wider">Admin Portal</span>
                 </>
               ) : (
                 <>
                   <User className="w-4 h-4 text-emerald-400" />
-                  <span className="text-xs font-semibold text-emerald-300">{user.full_name || user.username}</span>
+                  <span className="text-xs font-semibold text-emerald-300">Student Portal ({user.full_name || user.username})</span>
                 </>
               )}
             </div>

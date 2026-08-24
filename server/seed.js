@@ -99,7 +99,7 @@ function seed() {
     db.prepare("INSERT INTO config (key, value) VALUES ('rotation_start_date', '2026-07-26')").run();
 
     // Admin
-    const adminPassHash = bcrypt.hashSync('ajce2024', 10);
+    const adminPassHash = bcrypt.hashSync('cloud2028', 10);
     db.prepare("INSERT INTO admin (id, username, password) VALUES (1, 'admin', ?)").run(adminPassHash);
 
     // Benches

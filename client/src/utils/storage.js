@@ -188,6 +188,8 @@ export function initStorage() {
   if (!localStorage.getItem(STUDENTS_KEY)) {
     localStorage.setItem(STUDENTS_KEY, JSON.stringify(INITIAL_STUDENTS));
   }
+  // Clear any legacy persistent session from localStorage
+  localStorage.removeItem(SESSION_KEY);
 }
 
 initStorage();
@@ -247,7 +249,7 @@ export function login(username, password) {
   const isAdminUser = trimmedUser.toLowerCase() === 'admin' || (admin && admin.username && admin.username.toLowerCase() === trimmedUser.toLowerCase());
 
   if (isAdminUser) {
-    let isMatch = (trimmedPass === 'ajce2024' || password === 'ajce2024' || trimmedPass === 'admin123');
+    let isMatch = (trimmedPass === 'cloud2028' || password === 'cloud2028');
     if (!isMatch) {
       try {
         if (admin && admin.passwordHash) {
@@ -263,7 +265,8 @@ export function login(username, password) {
 
     if (isMatch) {
       const session = { username: 'admin', role: 'admin' };
-      localStorage.setItem(SESSION_KEY, JSON.stringify(session));
+      sessionStorage.setItem(SESSION_KEY, JSON.stringify(session));
+      localStorage.removeItem(SESSION_KEY);
       localStorage.setItem(ADMIN_KEY, JSON.stringify(INITIAL_ADMIN));
       return { success: true, user: session };
     }
@@ -287,7 +290,8 @@ export function login(username, password) {
         gender: student.gender,
         role: 'student'
       };
-      localStorage.setItem(SESSION_KEY, JSON.stringify(session));
+      sessionStorage.setItem(SESSION_KEY, JSON.stringify(session));
+      localStorage.removeItem(SESSION_KEY);
       return { success: true, user: session };
     }
   }
@@ -296,11 +300,12 @@ export function login(username, password) {
 }
 
 export function getCurrentSession() {
-  const sess = localStorage.getItem(SESSION_KEY);
+  const sess = sessionStorage.getItem(SESSION_KEY);
   return sess ? JSON.parse(sess) : null;
 }
 
 export function logout() {
+  sessionStorage.removeItem(SESSION_KEY);
   localStorage.removeItem(SESSION_KEY);
 }
 

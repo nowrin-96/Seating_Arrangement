@@ -43,9 +43,9 @@ try {
   db.prepare("UPDATE benches SET capacity = 3 WHERE id = 18 AND capacity = 2").run();
 } catch (e) {}
 
-// Ensure Admin password in database is synced to ajce2024
+// Ensure Admin password in database is synced to cloud2028
 try {
-  const adminPasswordHash = bcrypt.hashSync('ajce2024', 10);
+  const adminPasswordHash = bcrypt.hashSync('cloud2028', 10);
   const existingAdmin = db.prepare("SELECT * FROM admin WHERE LOWER(username) = 'admin'").get();
   if (existingAdmin) {
     db.prepare("UPDATE admin SET password = ? WHERE id = ?").run(adminPasswordHash, existingAdmin.id);
